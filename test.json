@@ -1,0 +1,113 @@
+{
+  "Name": "wingull",
+  "Types": [
+    {
+      "Name": "water",
+      "DoubleDamageFrom": [
+        "grass",
+        "electric"
+      ],
+      "HalfDamageFrom": [
+        "steel",
+        "fire",
+        "water",
+        "ice"
+      ],
+      "NoDamageFrom": [],
+      "DoubleDamageTo": [
+        "ground",
+        "rock",
+        "fire"
+      ],
+      "HalfDamageTo": [
+        "water",
+        "grass",
+        "dragon"
+      ],
+      "NoDamageTo": []
+    },
+    {
+      "Name": "flying",
+      "DoubleDamageFrom": [
+        "rock",
+        "electric",
+        "ice"
+      ],
+      "HalfDamageFrom": [
+        "fighting",
+        "bug",
+        "grass"
+      ],
+      "NoDamageFrom": [
+        "ground"
+      ],
+      "DoubleDamageTo": [
+        "fighting",
+        "bug",
+        "grass"
+      ],
+      "HalfDamageTo": [
+        "rock",
+        "steel",
+        "electric"
+      ],
+      "NoDamageTo": []
+    }
+  ],
+  "Moves": [],
+  "DoubleDamageFrom": [
+    "rock"
+  ],
+  "HalfDamageFrom": [
+    "steel",
+    "fire",
+    "water",
+    "fighting",
+    "bug"
+  ],
+  "NoDamageFrom": [
+    "ground"
+  ],
+  "NormalDamageFrom": [
+    "normal",
+    "flying",
+    "poison",
+    "ghost",
+    "grass",
+    "electric",
+    "psychic",
+    "ice",
+    "dragon",
+    "dark",
+    "fairy",
+    "stellar",
+    "unknown"
+  ],
+  "DoubleDamageTo": [
+    "ground",
+    "fire",
+    "fighting",
+    "bug"
+  ],
+  "HalfDamageTo": [
+    "water",
+    "dragon",
+    "steel",
+    "electric"
+  ],
+  "NoDamageTo": [],
+  "NormalDamageTo": [
+    "normal",
+    "flying",
+    "poison",
+    "rock",
+    "ghost",
+    "grass",
+    "psychic",
+    "ice",
+    "dark",
+    "fairy",
+    "stellar",
+    "unknown"
+  ]
+}
