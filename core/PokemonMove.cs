@@ -6,7 +6,7 @@ public class PokemonMove
     public int Power { get; set; }
     public int Accuracy { get; set; }
     public int PP { get; set; }
-    public PokemonType Type { get; set; }
+    public PokemonType? Type { get; set; }  // Nullable since it might not be set initially
     
     // Extended properties for battle mechanics
     public MoveDamageClass DamageClass { get; set; }  // Physical, Special, or Status
@@ -20,7 +20,7 @@ public class PokemonMove
         Power = 0;
         Accuracy = 100;
         PP = 0;
-        Type = new();
+        Type = null;  // Will be set when loading from API
         DamageClass = MoveDamageClass.Physical;
         Priority = 0;
         Target = MoveTarget.SelectedPokemon;

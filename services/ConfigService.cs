@@ -119,7 +119,11 @@ public static class ConfigService
             if (teamData == null || teamData.pokemon == null)
                 return false;
 
-            var pokemon = JsonConvert.DeserializeObject<List<PlayerPokemon>>(teamData.pokemon.ToString());
+            string pokemonJson = teamData.pokemon?.ToString() ?? "";
+            if (string.IsNullOrEmpty(pokemonJson))
+                return false;
+
+            var pokemon = JsonConvert.DeserializeObject<List<PlayerPokemon>>(pokemonJson);
             if (pokemon == null)
                 return false;
 
