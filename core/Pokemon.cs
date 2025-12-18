@@ -8,6 +8,9 @@ public class Pokemon
     public List<PokemonType> Types { get; set; }
     public List<PokemonMove> Moves { get; set; }
     
+    // Base stats from PokéAPI (CRITICAL: needed for PlayerPokemon stat calculations)
+    public PokemonStats BaseStats { get; set; }
+    
     public List<string> DoubleDamageFrom { get; set; }
     public List<string> HalfDamageFrom { get; set; }
     public List<string> NoDamageFrom { get; set; }
@@ -21,11 +24,12 @@ public class Pokemon
     public List<string> NormalDamageTo { get; set; }
 
     
-    public Pokemon(string name, List<PokemonType> types, List<PokemonMove> moves, List<string> doubleDamageFrom, List<string> halfDamageFrom, List<string> noDamageFrom, List<string> doubleDamageTo, List<string> halfDamageTo, List<string> noDamageTo, List<string> pokemonTypes)
+    public Pokemon(string name, List<PokemonType> types, List<PokemonMove> moves, PokemonStats baseStats, List<string> doubleDamageFrom, List<string> halfDamageFrom, List<string> noDamageFrom, List<string> doubleDamageTo, List<string> halfDamageTo, List<string> noDamageTo, List<string> pokemonTypes)
     {
         Name = name;
         Types = types;
         Moves = moves;
+        BaseStats = baseStats;
         
         DoubleDamageFrom = doubleDamageFrom;
         HalfDamageFrom = halfDamageFrom;
@@ -37,12 +41,5 @@ public class Pokemon
         HalfDamageTo = halfDamageTo;
         NoDamageTo = noDamageTo;
         NormalDamageTo = pokemonTypes.Except(doubleDamageTo.Concat(HalfDamageTo).Concat(NoDamageTo).ToList()).ToList();
-        
-        
-        
     }
-    
-
-    
-    
 }

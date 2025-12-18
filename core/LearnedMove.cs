@@ -9,6 +9,13 @@ public class LearnedMove
     public PokemonMove MoveData { get; set; }
     public int CurrentPP { get; set; }
 
+    // Parameterless constructor for JSON deserialization
+    public LearnedMove()
+    {
+        MoveData = null!;
+        CurrentPP = 0;
+    }
+
     public LearnedMove(PokemonMove moveData)
     {
         MoveData = moveData;
@@ -22,14 +29,14 @@ public class LearnedMove
     }
 
     /// <summary>
-    /// Gets the maximum PP for this move
+    /// Gets the maximum PP for this move (null-safe)
     /// </summary>
-    public int MaxPP => MoveData.PP;
+    public int MaxPP => MoveData?.PP ?? 0;
 
     /// <summary>
-    /// Gets the PP percentage (0-1)
+    /// Gets the PP percentage (0-1) with division by zero protection
     /// </summary>
-    public double PPPercentage => (double)CurrentPP / MaxPP;
+    public double PPPercentage => MaxPP > 0 ? (double)CurrentPP / MaxPP : 0;
 
     /// <summary>
     /// Checks if the move has PP remaining

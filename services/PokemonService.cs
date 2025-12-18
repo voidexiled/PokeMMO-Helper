@@ -68,6 +68,40 @@ public static class PokemonService
                     )
                 );
             }
+            
+            // Extract base stats from PokéAPI
+            var baseStats = new PokemonStats();
+            var statsArray = json["stats"];
+            if (statsArray != null)
+            {
+                foreach (var statObj in statsArray)
+                {
+                    string statName = statObj["stat"]?["name"]?.ToString() ?? "";
+                    int baseStat = (int)(statObj["base_stat"] ?? 0);
+                    
+                    switch (statName)
+                    {
+                        case "hp":
+                            baseStats.HP = baseStat;
+                            break;
+                        case "attack":
+                            baseStats.Attack = baseStat;
+                            break;
+                        case "defense":
+                            baseStats.Defense = baseStat;
+                            break;
+                        case "special-attack":
+                            baseStats.SpecialAttack = baseStat;
+                            break;
+                        case "special-defense":
+                            baseStats.SpecialDefense = baseStat;
+                            break;
+                        case "speed":
+                            baseStats.Speed = baseStat;
+                            break;
+                    }
+                }
+            }
 
             PokemonEffectiveness CombinedEffectiveness;
             
@@ -86,6 +120,7 @@ public static class PokemonService
                 name,
                 pokemonTypes,
                 pokemonMoves,
+                baseStats,  // ⭐ NEW: Pass base stats to constructor
                 CombinedEffectiveness.DoubleDamageFrom,
                 CombinedEffectiveness.HalfDamageFrom,
                 CombinedEffectiveness.NoDamageFrom,
