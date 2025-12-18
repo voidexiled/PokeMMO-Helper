@@ -5,8 +5,9 @@ using PasaporteFiller.core;
 
 namespace PasaporteFiller.services;
 
-public static class PokemonService
-{
+public static class PokemonService{
+    private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+
     private static string POKEMON_API_URL = "https://pokeapi.co/api/v2/pokemon/";
     private static string POKEMON_TYPE_API_URL = "https://pokeapi.co/api/v2/type/";
     private static string POKEMON_MOVE_API_URL = "https://pokeapi.co/api/v2/move/";
@@ -18,8 +19,7 @@ public static class PokemonService
     {
         try
         {
-            using HttpClient client = new();
-            var response = await client.GetStringAsync($"{POKEMON_API_URL}?limit=1500");
+            var response = await _httpClient.GetStringAsync($"{POKEMON_API_URL}?limit=1500");
             var json = JObject.Parse(response);
             var pokemonList = json["results"].Select(p => p["name"].ToString()).Where(name => !name.Contains("-")).ToList();
             return pokemonList;
@@ -34,8 +34,7 @@ public static class PokemonService
     {
         try
         {
-            using HttpClient client = new();
-            var response = await client.GetStringAsync($"{POKEMON_API_URL}{name.ToLower()}");
+            var response = await _httpClient.GetStringAsync($"{POKEMON_API_URL}{name.ToLower()}");
             var json = JObject.Parse(response);
             //var types = json["types"].Select(t => t["type"]["name"].ToString()).ToList();
             //var moves = json["moves"].Select(m => m["move"]["name"].ToString()).ToList();
@@ -144,8 +143,7 @@ public static class PokemonService
     {
         try
         {
-            using HttpClient client = new();
-            var response = await client.GetStringAsync($"{POKEMON_TYPE_API_URL}{typeName.ToLower()}");
+            var response = await _httpClient.GetStringAsync($"{POKEMON_TYPE_API_URL}{typeName.ToLower()}");
             var json = JObject.Parse(response);
             var doubleDamageFrom = json["damage_relations"]["double_damage_from"].Select(t => t["name"].ToString()).ToList();
             var halfDamageFrom = json["damage_relations"]["half_damage_from"].Select(t => t["name"].ToString()).ToList();
@@ -329,8 +327,7 @@ public static class PokemonService
     {
         try
         {
-            using HttpClient client = new();
-            var response = await client.GetStringAsync($"{POKEMON_TYPE_API_URL}");
+            var response = await _httpClient.GetStringAsync($"{POKEMON_TYPE_API_URL}");
             var json = JObject.Parse(response);
             var types = json["results"].Select(t => t["name"].ToString()).ToList();
 
