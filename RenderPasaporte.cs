@@ -821,13 +821,6 @@ namespace PasaporteFiller
             }
 
             ImGui.Begin("Busqueda", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize);
-            // testing
-            if (ImGui.Button("Seed Teams"))
-            {
-                GenerateSeedTeams();
-            }
-
-            ImGui.Spacing();
 
 
             ImGui.Checkbox("Show Team Manager", ref _showTeamManagerWindow);
@@ -1019,7 +1012,12 @@ namespace PasaporteFiller
 
                         ImGui.TableSetColumnIndex(2);
                         if (pokemonInSlot != null)
-                            ImGui.Button("Del");
+                        {
+                            if (ImGui.Button("Del"))
+                            {
+                                TeamService.RemovePokemon(i + 1);
+                            }
+                        }
                     }
 
                     ImGui.EndTable();
