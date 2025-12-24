@@ -43,6 +43,22 @@ public static class PokemonService
             var pokemonMoves = new List<PokemonMove>();
             var typesNames = json["types"].Select(t => t["type"]["name"].ToString()).ToList();
 
+            // Load moves from API
+            var movesArray = json["moves"];
+            if (movesArray != null)
+            {
+                foreach (var moveObj in movesArray)
+                {
+                    string moveName = moveObj["move"]?["name"]?.ToString() ?? "";
+                    if (!string.IsNullOrEmpty(moveName))
+                    {
+                        // Format move name (replace hyphens with spaces, capitalize first letter)
+                        moveName = char.ToUpper(moveName[0]) + moveName.Substring(1).Replace("-", " ");
+                        pokemonMoves.Add(new PokemonMove { Name = moveName, Power = 0, PP = 10 });
+                    }
+                }
+            }
+
             foreach (var typeName in typesNames)
             {
                 //var imageUrl = $"{POKEMON_IMAGE_URL}{typeName}.svg";

@@ -1184,15 +1184,21 @@ namespace PasaporteFiller
 
                         if (ImGui.Button("Search") || ImGui.IsKeyPressed(ImGuiKey.Enter))
                         {
-                            var pokemon = PokemonService.GetPokemon(_editedPokemonName.ToLower()).Result;
-                            if (pokemon != null)
+                            string searchName = _editedPokemonName.Trim().ToLower();
+                            if (!string.IsNullOrEmpty(searchName))
                             {
-                                _editedBasePokemon = pokemon;
-                                _editedNickname = pokemon.Name;  // Default nickname is Pokemon name
-                            }
-                            else
-                            {
-                                // Show error message (could add error display later)
+                                var pokemon = PokemonService.GetPokemon(searchName).Result;
+                                if (pokemon != null)
+                                {
+                                    _editedBasePokemon = pokemon;
+                                    _editedNickname = char.ToUpper(pokemon.Name[0]) + pokemon.Name.Substring(1);
+                                }
+                                else
+                                {
+                                    // Show error in red
+                                    ImGui.TextColored(new System.Numerics.Vector4(1, 0, 0, 1),
+                                        $"Pokemon '{searchName}' not found!");
+                                }
                             }
                         }
 
