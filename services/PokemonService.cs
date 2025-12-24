@@ -15,10 +15,10 @@ public static class PokemonService
 
     private static string POKEMON_IMAGE_URL = "https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/";
 
+    private static readonly Dictionary<string, PokemonMove> _moveCache = new Dictionary<string, PokemonMove>();
 
     public static async Task<List<String>> GetPokemonList()
     {
-    private static readonly Dictionary<string, PokemonMove> _moveCache = new Dictionary<string, PokemonMove>();
         try
         {
             var response = await _httpClient.GetStringAsync($"{POKEMON_API_URL}?limit=1500");
