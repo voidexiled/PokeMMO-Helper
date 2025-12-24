@@ -970,7 +970,23 @@ namespace PasaporteFiller
                         ImGui.TableSetColumnIndex(1);
                         if (pokemonInSlot == null)
                         {
-                            ImGui.Button("Add");
+                            if (ImGui.Button("Add"))
+                            {
+                                _showPokemonEditorWindow = true;
+                                _editingPosition = i;
+                                _editedBasePokemon = null;
+                                _editedPokemonName = "";
+                                _editedNickname = "";
+                                _editedLevel = 50;
+                            }
+                            {
+                                _showPokemonEditorWindow = true;
+                                _editingPosition = i;
+                                _editedBasePokemon = null;
+                                _editedPokemonName = "";
+                                _editedNickname = "";
+                                _editedLevel = 50;
+                            }
                         }
                         else
                         {
