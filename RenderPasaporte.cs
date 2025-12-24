@@ -1259,16 +1259,32 @@ namespace PasaporteFiller
                                 // Nature changed - recalculate stats
                                 CalculateStatsRealTime();
                             }
+                            if (ImGui.IsItemHovered() && _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count)
+                            {
+                                var nature = natures[_editedNatureIndex];
+                                string tooltip = nature.IsNeutral() ? $"{nature.Name}\nNeutral (no stat changes)" : $"{nature.Name}\n+10% {nature.IncreasedStat}\n-10% {nature.DecreasedStat}";
+                                ImGui.SetTooltip(tooltip);
+                            }
 
                             // Ability dropdown
                             var abilities = Ability.GetCommonAbilities();
                             string[] abilityNames = abilities.Select(a => a.Name).ToArray();
                             ImGui.Combo("Ability", ref _editedAbilityIndex, abilityNames, abilityNames.Length);
+                            if (ImGui.IsItemHovered() && _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count)
+                            {
+                                var ability = abilities[_editedAbilityIndex];
+                                ImGui.SetTooltip($"{ability.Name}\n{ability.Effect}");
+                            }
 
                             // Held Item dropdown
                             var items = Item.GetCommonItems();
                             string[] itemNames = items.Select(i => i.Name).ToArray();
                             ImGui.Combo("Held Item", ref _editedItemIndex, itemNames, itemNames.Length);
+                            if (ImGui.IsItemHovered() && _editedItemIndex >= 0 && _editedItemIndex < items.Count)
+                            {
+                                var item = items[_editedItemIndex];
+                                ImGui.SetTooltip($"{item.Name}\n{item.Effect}");
+                            }
 
                             ImGui.TreePop();
                         }
