@@ -1495,6 +1495,8 @@ namespace PasaporteFiller
                                     }
                                     ImGui.EndCombo();
                                 }
+
+                                ImGui.Spacing();
                             }
                             ImGui.TreePop();
                         }
