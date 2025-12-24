@@ -5,7 +5,8 @@ using PasaporteFiller.core;
 
 namespace PasaporteFiller.services;
 
-public static class PokemonService{
+public static class PokemonService
+{
     private static readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
 
     private static string POKEMON_API_URL = "https://pokeapi.co/api/v2/pokemon/";

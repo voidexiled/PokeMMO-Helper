@@ -10,6 +10,28 @@ public static class TeamService
 {
     private static List<PlayerPokemon> _currentTeam = new();
     private static readonly object _teamLock = new();
+    private static string _currentTeamName = "Unnamed Team";
+
+    /// <summary>
+    /// Gets or sets the current team's name
+    /// </summary>
+    public static string CurrentTeamName
+    {
+        get
+        {
+            lock (_teamLock)
+            {
+                return _currentTeamName;
+            }
+        }
+        set
+        {
+            lock (_teamLock)
+            {
+                _currentTeamName = value ?? "Unnamed Team";
+            }
+        }
+    }
 
     /// <summary>
     /// Gets the current team (read-only copy)
@@ -162,6 +184,7 @@ public static class TeamService
         lock (_teamLock)
         {
             _currentTeam.Clear();
+            _currentTeamName = "Unnamed Team";
         }
     }
 
@@ -177,7 +200,7 @@ public static class TeamService
             if (_currentTeam.Count == 0)
                 errors.Add("Team is empty");
 
-            foreach(var pokemon in _currentTeam)
+            foreach (var pokemon in _currentTeam)
             {
                 if (pokemon.Moveset.Count == 0)
                     errors.Add($"{pokemon.GetDisplayName()} has no moves");
