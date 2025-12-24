@@ -1414,29 +1414,10 @@ namespace PasaporteFiller
 
                         CalculateStatsRealTime();
 
-                        // Moveset Editor with Search
+                        // Moveset - 4 independent searches
                         if (ImGui.TreeNode("Moveset (Max 4)"))
                         {
-                            // Move search filter
-                            ImGui.SetNextItemWidth(300);
-                            ImGui.InputText("Search Moves", ref _moveSearchFilter, 64);
-                            ImGui.SameLine();
-                            if (ImGui.Button("Clear##MoveSearch"))
-                            {
-                                _moveSearchFilter = "";
-                            }
-
-                            // Get available moves from Pokemon
                             string[] availableMoveNames = _editedBasePokemon.Moves?.Select(m => m.Name).ToArray() ?? Array.Empty<string>();
-
-                            // Filter moves based on search
-                            var filteredMoves = string.IsNullOrWhiteSpace(_moveSearchFilter)
-                                ? availableMoveNames
-                                : availableMoveNames.Where(m => m.Contains(_moveSearchFilter, StringComparison.OrdinalIgnoreCase)).ToArray();
-
-                            ImGui.Text($"Showing {filteredMoves.Length} of {availableMoveNames.Length} moves");
-                            ImGui.Separator();
-
                             for (int i = 0; i < 4; i++)
                             {
                                 string currentMove = i < _selectedMoves.Count
