@@ -973,7 +973,7 @@ namespace PasaporteFiller
                             if (ImGui.Button("Add"))
                             {
                                 _showPokemonEditorWindow = true;
-                                _editingPosition = i;
+                                _editingPosition = 0;  // 0 means new Pokemon
                                 _editedBasePokemon = null;
                                 _editedPokemonName = "";
                                 _editedNickname = "";
@@ -987,7 +987,7 @@ namespace PasaporteFiller
                                 _showPokemonEditorWindow = true;
                                 _editedBasePokemon = pokemonInSlot.BaseData;
 
-                                _editingPosition = i;
+                                _editingPosition = i + 1;  // 1-6 for editing
 
                                 _editedPokemonName = pokemonInSlot.BaseData.Name;
                                 _editedNickname = pokemonInSlot.Nickname;

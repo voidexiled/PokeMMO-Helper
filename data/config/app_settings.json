@@ -1,0 +1,90 @@
+{
+  "OCR": {
+    "ScanInterval": 5000,
+    "UseLevenshtein": true,
+    "ScanAreas": {
+      "OpponentName": {
+        "Location": {
+          "IsEmpty": false,
+          "X": 900,
+          "Y": 100
+        },
+        "Size": {
+          "IsEmpty": false,
+          "Width": 300,
+          "Height": 50
+        },
+        "X": 900,
+        "Y": 100,
+        "Width": 300,
+        "Height": 50,
+        "Left": 900,
+        "Top": 100,
+        "Right": 1200,
+        "Bottom": 150,
+        "IsEmpty": false
+      },
+      "OpponentLevel": {
+        "Location": {
+          "IsEmpty": false,
+          "X": 1100,
+          "Y": 150
+        },
+        "Size": {
+          "IsEmpty": false,
+          "Width": 80,
+          "Height": 30
+        },
+        "X": 1100,
+        "Y": 150,
+        "Width": 80,
+        "Height": 30,
+        "Left": 1100,
+        "Top": 150,
+        "Right": 1180,
+        "Bottom": 180,
+        "IsEmpty": false
+      },
+      "OpponentHP": {
+        "Location": {
+          "IsEmpty": false,
+          "X": 950,
+          "Y": 180
+        },
+        "Size": {
+          "IsEmpty": false,
+          "Width": 200,
+          "Height": 20
+        },
+        "X": 950,
+        "Y": 180,
+        "Width": 200,
+        "Height": 20,
+        "Left": 950,
+        "Top": 180,
+        "Right": 1150,
+        "Bottom": 200,
+        "IsEmpty": false
+      }
+    },
+    "TesseractLanguage": "eng"
+  },
+  "UI": {
+    "Opacity": 0.95,
+    "TransparentBackground": false,
+    "ShowWeaknesses": true,
+    "ShowStrengths": false,
+    "ShowNormalEffectiveness": false,
+    "WindowPositions": {}
+  },
+  "Battle": {
+    "EnableBattleAssistant": true,
+    "AutoDetectBattle": true,
+    "ShowDamageCalculations": true,
+    "ShowSwitchRecommendations": true,
+    "ShowMoveEffectiveness": true,
+    "ConsiderAbilities": false,
+    "ConsiderWeather": false,
+    "ConsiderItems": false
+  }
+}
