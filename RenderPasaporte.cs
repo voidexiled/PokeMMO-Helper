@@ -415,6 +415,8 @@ namespace PasaporteFiller
 
         // Pokemon Data
         private string _editedPokemonName = "";
+        private string _pokemonSearchError = "";
+        private string _moveSearchFilter = "";
         private string _editedNickname = "";
         private int _editedLevel = 50;
         private int _editedGenderIndex = 0; // 0 - Male | 1 - Female | 2 - Genderless
@@ -1187,6 +1189,7 @@ namespace PasaporteFiller
                             string searchName = _editedPokemonName.Trim().ToLower();
                             if (!string.IsNullOrEmpty(searchName))
                             {
+                                _pokemonSearchError = ""; // Clear previous error
                                 var pokemon = PokemonService.GetPokemon(searchName).Result;
                                 if (pokemon != null)
                                 {
@@ -1195,11 +1198,15 @@ namespace PasaporteFiller
                                 }
                                 else
                                 {
-                                    // Show error in red
-                                    ImGui.TextColored(new System.Numerics.Vector4(1, 0, 0, 1),
-                                        $"Pokemon '{searchName}' not found!");
+                                    _pokemonSearchError = $"Pokemon '{searchName}' not found!";
                                 }
                             }
+                        }
+
+                        // Display persistent error message
+                        if (!string.IsNullOrEmpty(_pokemonSearchError))
+                        {
+                            ImGui.TextColored(new System.Numerics.Vector4(1, 0, 0, 1), _pokemonSearchError);
                         }
 
                         ImGui.End();
