@@ -979,14 +979,6 @@ namespace PasaporteFiller
                                 _editedNickname = "";
                                 _editedLevel = 50;
                             }
-                            {
-                                _showPokemonEditorWindow = true;
-                                _editingPosition = i;
-                                _editedBasePokemon = null;
-                                _editedPokemonName = "";
-                                _editedNickname = "";
-                                _editedLevel = 50;
-                            }
                         }
                         else
                         {
