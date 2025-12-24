@@ -417,6 +417,10 @@ namespace PasaporteFiller
         private string _editedPokemonName = "";
         private string _pokemonSearchError = "";
         private string _moveSearchFilter = "";
+        private string _natureSearchFilter = "";
+        private string _abilitySearchFilter = "";
+        private string _itemSearchFilter = "";
+        private string[] _moveSlotSearchFilters = new string[4] { "", "", "", "" };
         private string _editedNickname = "";
         private int _editedLevel = 50;
         private int _editedGenderIndex = 0; // 0 - Male | 1 - Female | 2 - Genderless
