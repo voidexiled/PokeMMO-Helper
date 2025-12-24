@@ -1328,24 +1328,24 @@ namespace PasaporteFiller
                             {
                                 _moveSearchFilter = "";
                             }
-                            
+
                             // Get available moves from Pokemon
                             string[] availableMoveNames = _editedBasePokemon.Moves?.Select(m => m.Name).ToArray() ?? Array.Empty<string>();
-                            
+
                             // Filter moves based on search
                             var filteredMoves = string.IsNullOrWhiteSpace(_moveSearchFilter)
                                 ? availableMoveNames
                                 : availableMoveNames.Where(m => m.Contains(_moveSearchFilter, StringComparison.OrdinalIgnoreCase)).ToArray();
-                            
+
                             ImGui.Text($"Showing {filteredMoves.Length} of {availableMoveNames.Length} moves");
                             ImGui.Separator();
-                            
+
                             for (int i = 0; i < 4; i++)
                             {
-                                string currentMove = i < _selectedMoves.Count 
-                                    ? _selectedMoves[i].MoveData.Name 
+                                string currentMove = i < _selectedMoves.Count
+                                    ? _selectedMoves[i].MoveData.Name
                                     : "Empty";
-                                
+
                                 if (ImGui.BeginCombo($"Move {i + 1}", currentMove))
                                 {
                                     // Option to clear the move
@@ -1356,7 +1356,7 @@ namespace PasaporteFiller
                                             _selectedMoves.RemoveAt(i);
                                         }
                                     }
-                                    
+
                                     // List filtered moves
                                     foreach (var moveName in filteredMoves)
                                     {
@@ -1364,25 +1364,35 @@ namespace PasaporteFiller
                                         if (ImGui.Selectable(moveName, isSelected))
                                         {
                                             var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
-                                            
+
                                             if (moveData != null)
                                             {
                                                 var learnedMove = new LearnedMove(moveData, moveData.PP);
-                                                
+
                                                 if (i < _selectedMoves.Count)
                                                     _selectedMoves[i] = learnedMove;
                                                 else
                                                     _selectedMoves.Add(learnedMove);
                                             }
                                         }
-                                        
+
                                         // Tooltip with move info
                                         if (ImGui.IsItemHovered())
                                         {
                                             var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
                                             if (moveData != null)
                                             {
-                                                ImGui.SetTooltip($"{moveName}\nPower: {moveData.Power}\nPP: {moveData.PP}\nAccuracy: {moveData.Accuracy}%");
+                                                string tooltip = $"{moveName}";
+                                                if (moveData.Power > 0)
+                                                    tooltip += $"\nPower: {moveData.Power}";
+                                                if (moveData.PP > 0)
+                                                    tooltip += $"\nPP: {moveData.PP}";
+                                                if (moveData.Accuracy > 0)
+                                                    tooltip += $"\nAccuracy: {moveData.Accuracy}%";
+                                                else if (moveData.Accuracy == 0 && moveData.Power == 0)
+                                                    tooltip += "\nStatus Move";
+
+                                                ImGui.SetTooltip(tooltip);
                                             }
                                         }
                                     }
