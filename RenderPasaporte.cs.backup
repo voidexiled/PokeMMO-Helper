@@ -1255,116 +1255,55 @@ namespace PasaporteFiller
                             string[] genders = { "Male", "Female", "Genderless" };
                             ImGui.Combo("Gender", ref _editedGenderIndex, genders, genders.Length);
 
-                            ImGui.Spacing();
-
-                            // Nature with search
-                            ImGui.Text("Nature:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##NatureSearch", ref _natureSearchFilter, 64);
-                            ImGui.SameLine();
-
+                            // Nature dropdown
                             var natures = Nature.GetAllNatures();
-                            var filteredNatures = string.IsNullOrWhiteSpace(_natureSearchFilter)
-                                ? natures
-                                : natures.Where(n => n.Name.Contains(_natureSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentNature = _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count
-                                ? natures[_editedNatureIndex].Name
-                                : "Select";
-
-                            if (ImGui.BeginCombo("##NatureCombo", currentNature))
+                            string[] natureNames = natures.Select(n => n.Name).ToArray();
+                            if (ImGui.Combo("Nature", ref _editedNatureIndex, natureNames, natureNames.Length))
                             {
-                                foreach (var nature in filteredNatures)
-                                {
-                                    int idx = natures.IndexOf(nature);
-                                    bool isSelected = _editedNatureIndex == idx;
-                                    if (ImGui.Selectable(nature.Name, isSelected))
-                                    {
-                                        _editedNatureIndex = idx;
-                                        CalculateStatsRealTime();
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        string tooltip = nature.IsNeutral()
-                                            ? $"{nature.Name}\nNeutral (no stat changes)"
-                                            : $"{nature.Name}\n+10% {nature.IncreasedStat}\n-10% {nature.DecreasedStat}";
-                                        ImGui.SetTooltip(tooltip);
-                                    }
-                                }
-                                ImGui.EndCombo();
+                                // Nature changed - recalculate stats
+                                CalculateStatsRealTime();
+                            }
+                            if (ImGui.IsItemHovered() && _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count)
+                            {
+                                var nature = natures[_editedNatureIndex];
+                                string tooltip = nature.IsNeutral() ? $"{nature.Name}\nNeutral (no stat changes)" : $"{nature.Name}\n+10% {nature.IncreasedStat}\n-10% {nature.DecreasedStat}";
+                                ImGui.SetTooltip(tooltip);
+                            }
+                            if (ImGui.IsItemHovered() && _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count)
+                            {
+                                var nature = natures[_editedNatureIndex];
+                                string tooltip = nature.IsNeutral() ? $"{nature.Name}\nNeutral (no stat changes)" : $"{nature.Name}\n+10% {nature.IncreasedStat}\n-10% {nature.DecreasedStat}";
+                                ImGui.SetTooltip(tooltip);
                             }
 
-                            ImGui.Spacing();
-
-                            // Ability with search
-                            ImGui.Text("Ability:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##AbilitySearch", ref _abilitySearchFilter, 64);
-                            ImGui.SameLine();
-
+                            // Ability dropdown
                             var abilities = Ability.GetCommonAbilities();
-                            var filteredAbilities = string.IsNullOrWhiteSpace(_abilitySearchFilter)
-                                ? abilities
-                                : abilities.Where(a => a.Name.Contains(_abilitySearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentAbility = _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count
-                                ? abilities[_editedAbilityIndex].Name
-                                : "Select";
-
-                            if (ImGui.BeginCombo("##AbilityCombo", currentAbility))
+                            string[] abilityNames = abilities.Select(a => a.Name).ToArray();
+                            ImGui.Combo("Ability", ref _editedAbilityIndex, abilityNames, abilityNames.Length);
+                            if (ImGui.IsItemHovered() && _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count)
                             {
-                                foreach (var ability in filteredAbilities)
-                                {
-                                    int idx = abilities.IndexOf(ability);
-                                    bool isSelected = _editedAbilityIndex == idx;
-                                    if (ImGui.Selectable(ability.Name, isSelected))
-                                    {
-                                        _editedAbilityIndex = idx;
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip($"{ability.Name}\n{ability.Effect}");
-                                    }
-                                }
-                                ImGui.EndCombo();
+                                var ability = abilities[_editedAbilityIndex];
+                                ImGui.SetTooltip($"{ability.Name}\n{ability.Effect}");
+                            }
+                            if (ImGui.IsItemHovered() && _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count)
+                            {
+                                var ability = abilities[_editedAbilityIndex];
+                                ImGui.SetTooltip($"{ability.Name}\n{ability.Effect}");
                             }
 
-                            ImGui.Spacing();
-
-                            // Item with search
-                            ImGui.Text("Held Item:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##ItemSearch", ref _itemSearchFilter, 64);
-                            ImGui.SameLine();
-
+                            // Held Item dropdown
                             var items = Item.GetCommonItems();
-                            var filteredItems = string.IsNullOrWhiteSpace(_itemSearchFilter)
-                                ? items
-                                : items.Where(i => i.Name.Contains(_itemSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentItem = _editedItemIndex >= 0 && _editedItemIndex < items.Count
-                                ? items[_editedItemIndex].Name
-                                : "None";
-
-                            if (ImGui.BeginCombo("##ItemCombo", currentItem))
+                            string[] itemNames = items.Select(i => i.Name).ToArray();
+                            ImGui.Combo("Held Item", ref _editedItemIndex, itemNames, itemNames.Length);
+                            if (ImGui.IsItemHovered() && _editedItemIndex >= 0 && _editedItemIndex < items.Count)
                             {
-                                foreach (var item in filteredItems)
-                                {
-                                    int idx = items.IndexOf(item);
-                                    bool isSelected = _editedItemIndex == idx;
-                                    if (ImGui.Selectable(item.Name, isSelected))
-                                    {
-                                        _editedItemIndex = idx;
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip($"{item.Name}\n{item.Effect}");
-                                    }
-                                }
-                                ImGui.EndCombo();
+                                var item = items[_editedItemIndex];
+                                ImGui.SetTooltip($"{item.Name}\n{item.Effect}");
+                            }
+                            if (ImGui.IsItemHovered() && _editedItemIndex >= 0 && _editedItemIndex < items.Count)
+                            {
+                                var item = items[_editedItemIndex];
+                                ImGui.SetTooltip($"{item.Name}\n{item.Effect}");
                             }
 
                             ImGui.TreePop();
