@@ -970,7 +970,7 @@ namespace PasaporteFiller
                         ImGui.TableSetColumnIndex(1);
                         if (pokemonInSlot == null)
                         {
-                            if (ImGui.Button("Add"))
+                            if (ImGui.Button($"Add##{i}"))
                             {
                                 _showPokemonEditorWindow = true;
                                 _editingPosition = 0;  // 0 means new Pokemon
@@ -1173,6 +1173,32 @@ namespace PasaporteFiller
 
                 if (_showPokemonEditorWindow)
                 {
+                    // Pokemon Search (for NEW pokemon only)
+                    if (_editedBasePokemon == null)
+                    {
+                        ImGui.Begin("Add New Pokemon");
+                        ImGui.SeparatorText("Search Pokemon");
+
+                        ImGui.SetNextItemWidth(300);
+                        ImGui.InputText("Pokemon Name", ref _editedPokemonName, 64);
+
+                        if (ImGui.Button("Search") || ImGui.IsKeyPressed(ImGuiKey.Enter))
+                        {
+                            var pokemon = PokemonService.GetPokemon(_editedPokemonName.ToLower()).Result;
+                            if (pokemon != null)
+                            {
+                                _editedBasePokemon = pokemon;
+                                _editedNickname = pokemon.Name;  // Default nickname is Pokemon name
+                            }
+                            else
+                            {
+                                // Show error message (could add error display later)
+                            }
+                        }
+
+                        ImGui.End();
+                    }
+
                     _editedIvs = new PokemonStats(
                         _editedIVsHP,
                         _editedIVsATTACK,
@@ -1192,8 +1218,47 @@ namespace PasaporteFiller
 
                     if (_editedBasePokemon != null)
                     {
-                        // IVs Section
                         ImGui.Begin("Edit Pokemon");
+
+                        ImGui.SeparatorText($"Editing: {_editedBasePokemon.Name}");
+
+                        // Basic Info Section
+                        if (ImGui.TreeNode("Basic Info"))
+                        {
+                            // Nickname
+                            ImGui.InputText("Nickname", ref _editedNickname, 64);
+
+                            // Level
+                            if (ImGui.SliderInt("Level", ref _editedLevel, 1, 100))
+                            {
+                                CalculateStatsRealTime();
+                            }
+
+                            // Gender
+                            string[] genders = { "Male", "Female", "Genderless" };
+                            ImGui.Combo("Gender", ref _editedGenderIndex, genders, genders.Length);
+
+                            // Nature dropdown
+                            var natures = Nature.GetAllNatures();
+                            string[] natureNames = natures.Select(n => n.Name).ToArray();
+                            if (ImGui.Combo("Nature", ref _editedNatureIndex, natureNames, natureNames.Length))
+                            {
+                                // Nature changed - recalculate stats
+                                CalculateStatsRealTime();
+                            }
+
+                            // Ability dropdown
+                            var abilities = Ability.GetCommonAbilities();
+                            string[] abilityNames = abilities.Select(a => a.Name).ToArray();
+                            ImGui.Combo("Ability", ref _editedAbilityIndex, abilityNames, abilityNames.Length);
+
+                            // Held Item dropdown
+                            var items = Item.GetCommonItems();
+                            string[] itemNames = items.Select(i => i.Name).ToArray();
+                            ImGui.Combo("Held Item", ref _editedItemIndex, itemNames, itemNames.Length);
+
+                            ImGui.TreePop();
+                        }
                         if (ImGui.TreeNode("IVs (0-31)"))
                         {
                             ImGui.SliderInt("HP IV", ref _editedIVsHP, 0, 31);
@@ -1239,6 +1304,55 @@ namespace PasaporteFiller
 
                         CalculateStatsRealTime();
 
+                        // Moveset Editor
+                        if (ImGui.TreeNode("Moveset (Max 4)"))
+                        {
+                            // Get available moves from Pokemon
+                            string[] availableMoveNames = _editedBasePokemon.Moves?.Select(m => m.Name).ToArray() ?? Array.Empty<string>();
+
+                            for (int i = 0; i < 4; i++)
+                            {
+                                string currentMove = i < _selectedMoves.Count
+                                    ? _selectedMoves[i].Move.Name
+                                    : "Empty";
+
+                                if (ImGui.BeginCombo($"Move {i + 1}", currentMove))
+                                {
+                                    // Option to clear the move
+                                    if (ImGui.Selectable("Empty"))
+                                    {
+                                        if (i < _selectedMoves.Count)
+                                        {
+                                            _selectedMoves.RemoveAt(i);
+                                        }
+                                    }
+
+                                    // List all available moves
+                                    foreach (var moveName in availableMoveNames)
+                                    {
+                                        if (ImGui.Selectable(moveName))
+                                        {
+                                            var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
+
+                                            if (moveData != null)
+                                            {
+                                                var learnedMove = new LearnedMove(moveData, moveData.PP);
+
+                                                if (i < _selectedMoves.Count)
+                                                    _selectedMoves[i] = learnedMove;
+                                                else
+                                                    _selectedMoves.Add(learnedMove);
+                                            }
+                                        }
+                                    }
+                                    ImGui.EndCombo();
+                                }
+                            }
+                            ImGui.TreePop();
+                        }
+
+                        ImGui.Spacing();
+
                         if (ImGui.TreeNode("Calculated Stats"))
                         {
                             ImGui.Text($"HP: {_editedCalculatedStats.HP}");
@@ -1253,6 +1367,14 @@ namespace PasaporteFiller
                         if (ImGui.Button("Save"))
                         {
                             SavePokemonEditor();
+                        }
+
+                        ImGui.SameLine();
+
+                        if (ImGui.Button("Cancel"))
+                        {
+                            _showPokemonEditorWindow = false;
+                            _editedBasePokemon = null;
                         }
 
                         ImGui.End();
