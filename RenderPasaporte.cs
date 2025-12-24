@@ -982,7 +982,7 @@ namespace PasaporteFiller
                         }
                         else
                         {
-                            if (ImGui.Button("Edit"))
+                            if (ImGui.Button($"Edit##{i}"))
                             {
                                 _showPokemonEditorWindow = true;
                                 _editedBasePokemon = pokemonInSlot.BaseData;
@@ -1021,7 +1021,7 @@ namespace PasaporteFiller
                         ImGui.TableSetColumnIndex(2);
                         if (pokemonInSlot != null)
                         {
-                            if (ImGui.Button("Del"))
+                            if (ImGui.Button($"Del##{i}"))
                             {
                                 TeamService.RemovePokemon(i + 1);
                             }
@@ -1180,6 +1180,14 @@ namespace PasaporteFiller
                         _editedIVsSPATTACK,
                         _editedIVsSPDEFENSE,
                         _editedIVsSPEED
+                    );
+                    _editedEvs = new PokemonStats(
+                        _editedEVsHP,
+                        _editedEVsATTACK,
+                        _editedEVsDEFENSE,
+                        _editedEVsSPATTACK,
+                        _editedEVsSPDEFENSE,
+                        _editedEVsSPEED
                     );
 
                     if (_editedBasePokemon != null)
