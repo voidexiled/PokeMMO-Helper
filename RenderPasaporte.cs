@@ -1486,8 +1486,7 @@ namespace PasaporteFiller
                                                     tooltip += $"\nPP: {moveData.PP}";
                                                 if (moveData.Accuracy > 0)
                                                     tooltip += $"\nAccuracy: {moveData.Accuracy}%";
-                                                else if (moveData.Accuracy == 0 && moveData.Power == 0)
-                                                    tooltip += "\nStatus Move";
+
 
                                                 ImGui.SetTooltip(tooltip);
                                             }
