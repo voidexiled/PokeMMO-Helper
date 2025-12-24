@@ -1313,7 +1313,7 @@ namespace PasaporteFiller
                             for (int i = 0; i < 4; i++)
                             {
                                 string currentMove = i < _selectedMoves.Count
-                                    ? _selectedMoves[i].Move.Name
+                                    ? _selectedMoves[i].MoveData.Name
                                     : "Empty";
 
                                 if (ImGui.BeginCombo($"Move {i + 1}", currentMove))
