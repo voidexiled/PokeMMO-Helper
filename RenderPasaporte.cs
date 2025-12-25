@@ -1657,6 +1657,7 @@ namespace PasaporteFiller
                                             ImGui.BeginTooltip();
 
                                             // Show item sprite if available (48x48 in tooltip)
+                                            bool spriteGroupOpened = false;
                                             if (itemDetails?.SpriteUrl != null)
                                             {
                                                 var itemCachePath = $"cache/items/{itemDetails.Name.ToLower().Replace(" ", "-")}.png";
@@ -1701,13 +1702,9 @@ namespace PasaporteFiller
                                                     ImGui.TextUnformatted($"Fling Power: {itemDetails.FlingPower}");
 
                                                 // End sprite group if it was opened
-                                                if (!string.IsNullOrEmpty(itemDetails.SpriteUrl))
+                                                if (spriteGroupOpened)
                                                 {
-                                                    var itemCachePath = $"cache/items/{itemDetails.Name.ToLower().Replace(" ", "-")}.png";
-                                                    if (File.Exists(itemCachePath))
-                                                    {
-                                                        ImGui.EndGroup();
-                                                    }
+                                                    ImGui.EndGroup();
                                                 }
                                             }
                                             else
