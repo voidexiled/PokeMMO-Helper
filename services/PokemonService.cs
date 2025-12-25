@@ -440,38 +440,19 @@ public static class PokemonService
 
         try
         {
-            // Only load held/equippable items from specific categories
-            // User-specified useful categories: 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 36, 42, 44, 45, 46
-            int[] heldItemCategories = { 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 36, 42, 44, 45, 46 };
-
+            var countResponse = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}?limit=1");
+            var countJson = JObject.Parse(countResponse);
+            int totalCount = countJson["count"]?.Value<int>() ?? 2000;
+            var response = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}?limit={totalCount}");
+            var json = JObject.Parse(response);
             var items = new List<Item>();
             items.Add(new Item("None", ItemCategory.None, "No item equipped", ""));
-
-            // Load items from each category
-            foreach (var categoryId in heldItemCategories)
+            foreach (var itemObj in json["results"])
             {
-                try
+                string itemName = itemObj["name"]?.ToString() ?? "";
+                if (!string.IsNullOrEmpty(itemName))
                 {
-                    var categoryUrl = $"https://pokeapi.co/api/v2/item-category/{categoryId}/";
-                    var categoryResponse = await _httpClient.GetStringAsync(categoryUrl);
-                    var categoryJson = JObject.Parse(categoryResponse);
-
-                    var categoryItems = categoryJson["items"];
-                    if (categoryItems != null)
-                    {
-                        foreach (var itemObj in categoryItems)
-                        {
-                            string itemName = itemObj["name"]?.ToString() ?? "";
-                            if (!string.IsNullOrEmpty(itemName))
-                            {
-                                items.Add(new Item(FormatItemName(itemName), ItemCategory.Other, "", ""));
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error loading category {categoryId}: {ex.Message}");
+                    items.Add(new Item(FormatItemName(itemName), ItemCategory.Other, "", ""));
                 }
             }
 
