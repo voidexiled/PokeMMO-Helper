@@ -1671,10 +1671,21 @@ namespace PasaporteFiller
                                                 // Display sprite in tooltip
                                                 if (File.Exists(itemCachePath))
                                                 {
-                                                    AddOrGetImagePointer(itemCachePath, true, out var itemHandle, out _, out _);
-                                                    ImGui.Image(itemHandle, new Vector2(48, 48));
-                                                    ImGui.SameLine();
-                                                    ImGui.BeginGroup();
+                                                    try
+                                                    {
+                                                        AddOrGetImagePointer(itemCachePath, true, out var itemHandle, out _, out _);
+                                                        if (itemHandle != IntPtr.Zero)
+                                                        {
+                                                            ImGui.Image(itemHandle, new Vector2(48, 48));
+                                                            ImGui.SameLine();
+                                                            ImGui.BeginGroup();
+                                                            spriteGroupOpened = true;
+                                                        }
+                                                    }
+                                                    catch
+                                                    {
+                                                        // Ignore errors - file might be being written or corrupted
+                                                    }
                                                 }
                                             }
 
