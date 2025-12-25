@@ -436,8 +436,7 @@ public static class PokemonService
 
     public static async Task<List<Item>> GetAllItems()
     {
-        // Force reload to apply new category filtering
-        // if (_allItems != null) return _allItems;
+        if (_allItems != null) return _allItems;
 
         try
         {
