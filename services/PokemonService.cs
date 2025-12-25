@@ -441,8 +441,8 @@ public static class PokemonService
         try
         {
             // Only load held/equippable items from specific categories
-            // 12: held-items, 13: choice, 17: plates, 18: species-specific, 19: type-enhancement
-            int[] heldItemCategories = { 12, 13, 17, 18, 19 };
+            // User-specified useful categories: 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 36, 42, 44, 45, 46
+            int[] heldItemCategories = { 3, 4, 5, 6, 7, 8, 12, 13, 14, 15, 16, 17, 18, 19, 36, 42, 44, 45, 46 };
 
             var items = new List<Item>();
             items.Add(new Item("None", ItemCategory.None, "No item equipped", ""));
