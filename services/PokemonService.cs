@@ -440,22 +440,38 @@ public static class PokemonService
 
         try
         {
-            var countResponse = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}?limit=1");
-            var countJson = JObject.Parse(countResponse);
-            int totalCount = countJson["count"]?.Value<int>() ?? 2000;
+            // Only load held/equippable items from specific categories
+            // 12: held-items, 13: choice, 17: plates, 18: species-specific, 19: type-enhancement
+            int[] heldItemCategories = { 12, 13, 17, 18, 19 };
 
-            var response = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}?limit={totalCount}");
-            var json = JObject.Parse(response);
             var items = new List<Item>();
-
             items.Add(new Item("None", ItemCategory.None, "No item equipped", ""));
 
-            foreach (var itemObj in json["results"])
+            // Load items from each category
+            foreach (var categoryId in heldItemCategories)
             {
-                string itemName = itemObj["name"]?.ToString() ?? "";
-                if (!string.IsNullOrEmpty(itemName))
+                try
                 {
-                    items.Add(new Item(FormatItemName(itemName), ItemCategory.Other, "", ""));
+                    var categoryUrl = $"https://pokeapi.co/api/v2/item-category/{categoryId}/";
+                    var categoryResponse = await _httpClient.GetStringAsync(categoryUrl);
+                    var categoryJson = JObject.Parse(categoryResponse);
+
+                    var categoryItems = categoryJson["items"];
+                    if (categoryItems != null)
+                    {
+                        foreach (var itemObj in categoryItems)
+                        {
+                            string itemName = itemObj["name"]?.ToString() ?? "";
+                            if (!string.IsNullOrEmpty(itemName))
+                            {
+                                items.Add(new Item(FormatItemName(itemName), ItemCategory.Other, "", ""));
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error loading category {categoryId}: {ex.Message}");
                 }
             }
 
