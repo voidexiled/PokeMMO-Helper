@@ -7,6 +7,10 @@ public class Pokemon
     public List<PokemonType> Types { get; set; }
     public List<PokemonMove> Moves { get; set; }
 
+    // Sprite URLs from PokeAPI
+    public string? SpriteUrl { get; set; }
+    public string? SpriteShinyUrl { get; set; }
+
     // Base stats from PokéAPI (CRITICAL: needed for PlayerPokemon stat calculations)
     public PokemonStats BaseStats { get; set; }
 

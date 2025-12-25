@@ -7,13 +7,14 @@ public class PokemonMove
     public int Accuracy { get; set; }
     public int PP { get; set; }
     public PokemonType? Type { get; set; }  // Nullable since it might not be set initially
-    
+    public string TypeName { get; set; }  // Type name for display (e.g., "Fire", "Water")
+
     // Extended properties for battle mechanics
     public MoveDamageClass DamageClass { get; set; }  // Physical, Special, or Status
     public int Priority { get; set; }  // Move priority (-6 to +5, default 0)
     public MoveTarget Target { get; set; }  // Who the move targets
     public string Description { get; set; }  // Move description
-    
+
     public PokemonMove()
     {
         Name = "";
@@ -21,12 +22,13 @@ public class PokemonMove
         Accuracy = 100;
         PP = 0;
         Type = null;  // Will be set when loading from API
+        TypeName = "";
         DamageClass = MoveDamageClass.Physical;
         Priority = 0;
         Target = MoveTarget.SelectedPokemon;
         Description = "";
     }
-    
+
     /// <summary>
     /// Returns true if this is a damaging move
     /// </summary>
@@ -34,7 +36,7 @@ public class PokemonMove
     {
         return Power > 0 && DamageClass != MoveDamageClass.Status;
     }
-    
+
     /// <summary>
     /// Returns true if this is a status move
     /// </summary>

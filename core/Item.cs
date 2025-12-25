@@ -9,14 +9,21 @@ public class Item
     public string Description { get; set; }
     public string Effect { get; set; }  // Battle effect description
     public ItemCategory Category { get; set; }
+    public int Cost { get; set; }  // Item cost in Poké Dollars
+    public int? FlingPower { get; set; }  // Power when used with Fling move
+    public string SpriteUrl { get; set; }  // URL to item sprite image
 
-    public Item(string name, ItemCategory category = ItemCategory.None, string description = "", string effect = "")
+    public Item(string name, ItemCategory category = ItemCategory.None, string description = "", string effect = "", int cost = 0, int? flingPower = null, string spriteUrl = "")
     {
         Name = name;
         Category = category;
         Description = description;
         Effect = effect;
+        Cost = cost;
+        FlingPower = flingPower;
+        SpriteUrl = spriteUrl;
     }
+
 
     /// <summary>
     /// Common battle items - can be extended later

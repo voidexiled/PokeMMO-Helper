@@ -95,6 +95,77 @@ namespace PasaporteFiller
 
         private static float _opacity = 0.95f;
 
+        /// <summary>
+        /// Formats stat names for display in tooltips
+        /// </summary>
+        private static string FormatStatName(string statName)
+        {
+            if (string.IsNullOrEmpty(statName))
+                return "";
+
+            return statName.ToLower() switch
+            {
+                "hp" => "HP",
+                "attack" => "Attack",
+                "defense" => "Defense",
+                "specialattack" => "Sp. Attack",
+                "specialdefense" => "Sp. Defense",
+                "speed" => "Speed",
+                _ => statName
+            };
+        }
+
+        /// <summary>
+        /// Renders a single type icon for move tooltips
+        /// </summary>
+        private void RenderMoveTypeIcon(string typeName, Vector2 size)
+        {
+            if (string.IsNullOrEmpty(typeName)) return;
+
+            typeName = typeName.ToLower();
+            IntPtr handle = typeName switch
+            {
+                "bug" => BugTypeImageHandle,
+                "dark" => DarkTypeImageHandle,
+                "dragon" => DragonTypeImageHandle,
+                "electric" => ElectricTypeImageHandle,
+                "fairy" => FairyTypeImageHandle,
+                "fighting" => FightingTypeImageHandle,
+                "fire" => FireTypeImageHandle,
+                "flying" => FlyingTypeImageHandle,
+                "ghost" => GhostTypeImageHandle,
+                "grass" => GrassTypeImageHandle,
+                "ground" => GroundTypeImageHandle,
+                "ice" => IceTypeImageHandle,
+                "normal" => NormalTypeImageHandle,
+                "poison" => PoisonTypeImageHandle,
+                "psychic" => PsychicTypeImageHandle,
+                "rock" => RockTypeImageHandle,
+                "steel" => SteelTypeImageHandle,
+                "water" => WaterTypeImageHandle,
+                _ => IntPtr.Zero
+            };
+
+            if (handle != IntPtr.Zero)
+            {
+                ImGui.Image(handle, size);
+            }
+        }
+
+        /// <summary>
+        /// Formats damage class for display
+        /// </summary>
+        private static string FormatDamageClass(MoveDamageClass damageClass)
+        {
+            return damageClass switch
+            {
+                MoveDamageClass.Physical => "Physical",
+                MoveDamageClass.Special => "Special",
+                MoveDamageClass.Status => "Status",
+                _ => "Unknown"
+            };
+        }
+
         private static void ImGuiStyle_Red()
         {
             // Moonlight styleMadam-Herta from ImThemes
@@ -455,6 +526,16 @@ namespace PasaporteFiller
         private bool _confirmed = false;
         private bool _askConfirmReplace = false;
 
+        // Loading screen state
+        private bool _isLoadingData = false;
+        private bool _dataLoaded = false;
+        private Task? _loadingTask = null;
+
+        // Background loading state
+        private LoadingProgress? _backgroundProgress = null;
+        private Task? _backgroundLoadingTask = null;
+
+
 
         /*
          * RENDER METHOD
@@ -805,8 +886,135 @@ namespace PasaporteFiller
         public static bool _useLevenshteinMethod = true;
         private bool _showLogWindow = false;
 
+        // Moveset search filter fields (persist between frames)
+        private string[] _moveSearchFilters = new string[] { "", "", "", "" };
+
+        /// <summary>
+        /// Renders loading screen during startup data loading
+        /// </summary>
+        private void RenderLoadingScreen()
+        {
+            ImGui.SetNextWindowSize(new Vector2(500, 220));
+            ImGui.SetNextWindowPos(new Vector2(
+                ImGui.GetIO().DisplaySize.X / 2 - 250,
+                ImGui.GetIO().DisplaySize.Y / 2 - 110
+            ));
+
+            ImGui.Begin("Loading", ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoTitleBar);
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            // Title
+            ImGui.SetWindowFontScale(1.5f);
+            var textWidth = ImGui.CalcTextSize("PasaporteFiller").X;
+            ImGui.SetCursorPosX((500 - textWidth) / 2);
+            ImGui.TextColored(new Vector4(0.4f, 0.8f, 1.0f, 1.0f), "PasaporteFiller");
+            ImGui.SetWindowFontScale(1.0f);
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            // Status
+            var statusWidth = ImGui.CalcTextSize(DataLoader.LoadingStatus).X;
+            ImGui.SetCursorPosX((500 - statusWidth) / 2);
+            ImGui.Text(DataLoader.LoadingStatus);
+
+            ImGui.Spacing();
+
+            // Progress bar
+            ImGui.ProgressBar(DataLoader.LoadingProgress, new Vector2(-1, 30));
+
+            ImGui.Spacing();
+
+            // Error message and buttons
+            if (!string.IsNullOrEmpty(DataLoader.ErrorMessage))
+            {
+                ImGui.PushTextWrapPos(480);
+                ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1.0f), $"Error: {DataLoader.ErrorMessage}");
+                ImGui.PopTextWrapPos();
+
+                ImGui.Spacing();
+
+                // Retry button
+                if (ImGui.Button("Retry", new Vector2(100, 30)))
+                {
+                    DataLoader.Reset();
+                    _isLoadingData = false;
+                    _dataLoaded = false;
+                    _loadingTask = null;
+                }
+
+                ImGui.SameLine();
+
+                // Skip button
+                if (ImGui.Button("Skip (Use Offline Data)", new Vector2(200, 30)))
+                {
+                    _dataLoaded = true;
+                    _isLoadingData = false;
+                }
+            }
+
+            ImGui.End();
+        }
+
         protected override void Render()
         {
+            // Show loading screen if data not loaded
+            if (!_dataLoaded && !_isLoadingData)
+            {
+                // Only start loading once - check if task is null or completed (not running)
+                if (_loadingTask == null || _loadingTask.IsCompleted)
+                {
+                    _isLoadingData = true;
+                    Console.WriteLine("[RENDER] Starting minimal data load...");
+                    _loadingTask = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await DataLoader.LoadMinimalData();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[RENDER] DataLoader failed: {ex.Message}");
+                            // DataLoader handles its own ErrorMessage internally
+                        }
+                    });
+                }
+            }
+
+            if (!_dataLoaded)
+            {
+                RenderLoadingScreen();
+
+                // Check if loading completed
+                if (_loadingTask != null && _loadingTask.IsCompleted)
+                {
+                    _dataLoaded = DataLoader.IsLoaded;
+                    _isLoadingData = false;
+
+                    if (_dataLoaded)
+                    {
+                        Console.WriteLine("[RENDER] Minimal data loaded - App ready!");
+                        Console.WriteLine("[RENDER] Starting background Pokemon loading...");
+                        StartBackgroundLoading();
+                    }
+                    else
+                    {
+                        Console.WriteLine("[RENDER] Data loading failed");
+                    }
+                }
+
+                return; // Don't render main UI yet
+            }
+
+
+            // Show background loading progress overlay
+            if (!DataLoader.IsBackgroundLoadComplete)
+            {
+                RenderBackgroundLoadingOverlay();
+            }
+            // Main UI rendering starts here
             FillPokemonList();
             ConfigureOverlaySize();
             ImGuiStyle_Red();
@@ -971,6 +1179,27 @@ namespace PasaporteFiller
                         var textToShow = pokemonInSlot == null
                             ? $"{i + 1}. [Empty Slot]"
                             : $"{i + 1}. [{pokemonInSlot.BaseData.Name} ({pokemonInSlot.Nickname}) Lv.{pokemonInSlot.Level}]";
+
+                        // Show small Pokemon sprite if available
+                        if (pokemonInSlot != null && !string.IsNullOrEmpty(pokemonInSlot.BaseData.Name))
+                        {
+                            var cachePath = $"cache/pokemon/{pokemonInSlot.BaseData.Name.ToLower()}.png";
+
+                            // Download sprite if not cached
+                            if (pokemonInSlot.BaseData.SpriteUrl != null && !File.Exists(cachePath))
+                            {
+                                _ = Task.Run(async () => await ImageUrlLoader.LoadImageFromUrl(pokemonInSlot.BaseData.SpriteUrl, cachePath));
+                            }
+
+                            // Display sprite
+                            if (File.Exists(cachePath))
+                            {
+                                AddOrGetImagePointer(cachePath, true, out var spriteHandle, out _, out _);
+                                ImGui.Image(spriteHandle, new Vector2(32, 32));
+                                ImGui.SameLine();
+                            }
+                        }
+
                         ImGui.TextUnformatted(textToShow);
 
                         ImGui.TableSetColumnIndex(1);
@@ -1235,278 +1464,506 @@ namespace PasaporteFiller
 
                     if (_editedBasePokemon != null)
                     {
-                        ImGui.Begin("Edit Pokemon");
-
+                        ImGui.Begin("Edit Pokemon", ref _showPokemonEditorWindow);
                         ImGui.SeparatorText($"Editing: {_editedBasePokemon.Name}");
 
-                        // Basic Info Section
-                        if (ImGui.TreeNode("Basic Info"))
+                        // ===== POKEMON SPRITE =====
+                        if (_editedBasePokemon?.SpriteUrl != null)
                         {
-                            // Nickname
-                            ImGui.InputText("Nickname", ref _editedNickname, 64);
+                            var cachePath = $"cache/pokemon/{_editedBasePokemon.Name.ToLower()}.png";
 
-                            // Level
-                            if (ImGui.SliderInt("Level", ref _editedLevel, 1, 100))
+                            // Download sprite if not cached
+                            if (!File.Exists(cachePath))
                             {
-                                CalculateStatsRealTime();
+                                _ = Task.Run(async () => await ImageUrlLoader.LoadImageFromUrl(_editedBasePokemon.SpriteUrl, cachePath));
                             }
 
-                            // Gender
-                            string[] genders = { "Male", "Female", "Genderless" };
-                            ImGui.Combo("Gender", ref _editedGenderIndex, genders, genders.Length);
-
-                            ImGui.Spacing();
-
-                            // Nature with search
-                            ImGui.Text("Nature:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##NatureSearch", ref _natureSearchFilter, 64);
-                            ImGui.SameLine();
-
-                            var natures = Nature.GetAllNatures();
-                            var filteredNatures = string.IsNullOrWhiteSpace(_natureSearchFilter)
-                                ? natures
-                                : natures.Where(n => n.Name.Contains(_natureSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentNature = _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count
-                                ? natures[_editedNatureIndex].Name
-                                : "Select";
-
-                            if (ImGui.BeginCombo("##NatureCombo", currentNature))
+                            // Display sprite
+                            if (File.Exists(cachePath))
                             {
-                                foreach (var nature in filteredNatures)
-                                {
-                                    int idx = natures.IndexOf(nature);
-                                    bool isSelected = _editedNatureIndex == idx;
-                                    if (ImGui.Selectable(nature.Name, isSelected))
-                                    {
-                                        _editedNatureIndex = idx;
-                                        CalculateStatsRealTime();
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        string tooltip = nature.IsNeutral()
-                                            ? $"{nature.Name}\nNeutral (no stat changes)"
-                                            : $"{nature.Name}\n+10% {nature.IncreasedStat}\n-10% {nature.DecreasedStat}";
-                                        ImGui.SetTooltip(tooltip);
-                                    }
-                                }
-                                ImGui.EndCombo();
+                                AddOrGetImagePointer(cachePath, true, out var spriteHandle, out _, out _);
+                                ImGui.Image(spriteHandle, new Vector2(96, 96));
+                                ImGui.SameLine();
+                                ImGui.BeginGroup();
+                                ImGui.Text(_editedBasePokemon.Name);
+                                // Pokemon class doesn't have Level, only PlayerPokemon does
+                                ImGui.EndGroup();
+                                ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
                             }
-
-                            ImGui.Spacing();
-
-                            // Ability with search
-                            ImGui.Text("Ability:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##AbilitySearch", ref _abilitySearchFilter, 64);
-                            ImGui.SameLine();
-
-                            var abilities = Ability.GetCommonAbilities();
-                            var filteredAbilities = string.IsNullOrWhiteSpace(_abilitySearchFilter)
-                                ? abilities
-                                : abilities.Where(a => a.Name.Contains(_abilitySearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentAbility = _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count
-                                ? abilities[_editedAbilityIndex].Name
-                                : "Select";
-
-                            if (ImGui.BeginCombo("##AbilityCombo", currentAbility))
-                            {
-                                foreach (var ability in filteredAbilities)
-                                {
-                                    int idx = abilities.IndexOf(ability);
-                                    bool isSelected = _editedAbilityIndex == idx;
-                                    if (ImGui.Selectable(ability.Name, isSelected))
-                                    {
-                                        _editedAbilityIndex = idx;
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip($"{ability.Name}\n{ability.Effect}");
-                                    }
-                                }
-                                ImGui.EndCombo();
-                            }
-
-                            ImGui.Spacing();
-
-                            // Item with search
-                            ImGui.Text("Held Item:");
-                            ImGui.SetNextItemWidth(200);
-                            ImGui.InputText("##ItemSearch", ref _itemSearchFilter, 64);
-                            ImGui.SameLine();
-
-                            var items = Item.GetCommonItems();
-                            var filteredItems = string.IsNullOrWhiteSpace(_itemSearchFilter)
-                                ? items
-                                : items.Where(i => i.Name.Contains(_itemSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                            string currentItem = _editedItemIndex >= 0 && _editedItemIndex < items.Count
-                                ? items[_editedItemIndex].Name
-                                : "None";
-
-                            if (ImGui.BeginCombo("##ItemCombo", currentItem))
-                            {
-                                foreach (var item in filteredItems)
-                                {
-                                    int idx = items.IndexOf(item);
-                                    bool isSelected = _editedItemIndex == idx;
-                                    if (ImGui.Selectable(item.Name, isSelected))
-                                    {
-                                        _editedItemIndex = idx;
-                                    }
-
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip($"{item.Name}\n{item.Effect}");
-                                    }
-                                }
-                                ImGui.EndCombo();
-                            }
-
-                            ImGui.TreePop();
-                        }
-                        if (ImGui.TreeNode("IVs (0-31)"))
-                        {
-                            ImGui.SliderInt("HP IV", ref _editedIVsHP, 0, 31);
-                            ImGui.SliderInt("Attack IV", ref _editedIVsATTACK, 0, 31);
-                            ImGui.SliderInt("Defense IV", ref _editedIVsDEFENSE, 0, 31);
-                            ImGui.SliderInt("Sp.Atk IV", ref _editedIVsSPATTACK, 0, 31);
-                            ImGui.SliderInt("Sp.Def IV", ref _editedIVsSPDEFENSE, 0, 31);
-                            ImGui.SliderInt("Speed IV", ref _editedIVsSPEED, 0, 31);
-                            if (ImGui.Button("Max All IVs"))
-                            {
-                                _editedIVsHP = 31;
-                                _editedIVsATTACK = 31;
-                                _editedIVsDEFENSE = 31;
-                                _editedIVsSPATTACK = 31;
-                                _editedIVsSPDEFENSE = 31;
-                                _editedIVsSPEED = 31;
-                            }
-
-                            ImGui.TreePop();
                         }
 
-                        // EVs Section
-                        if (ImGui.TreeNode("EVs (0-252, Total 510)"))
+                        // Tab-based organization
+                        if (ImGui.BeginTabBar("PokemonEditorTabs", ImGuiTabBarFlags.None))
                         {
-                            int totalEVs = StatsCalculator.GetTotalEVs(_editedEvs);
-                            ImGui.Text($"Total EVs: {totalEVs}/510");
-
-                            ImGui.SliderInt("HP EV", ref _editedEVsHP, 0, 252);
-                            ImGui.SliderInt("Attack EV", ref _editedEVsATTACK, 0, 252);
-                            ImGui.SliderInt("Defense EV", ref _editedEVsDEFENSE, 0, 252);
-                            ImGui.SliderInt("Sp.Atk EV", ref _editedEVsSPATTACK, 0, 252);
-                            ImGui.SliderInt("Sp.Def EV", ref _editedEVsSPDEFENSE, 0, 252);
-                            ImGui.SliderInt("Speed EV", ref _editedEVsSPEED, 0, 252);
-
-                            var evValidation = StatsCalculator.ValidateEVs(_editedEvs);
-                            if (!evValidation.isValid)
+                            // ==================== OVERVIEW TAB ====================
+                            if (ImGui.BeginTabItem("Overview"))
                             {
-                                ImGui.TextColored(new Vector4(1, 0, 0, 1), evValidation.error);
-                            }
-
-                            ImGui.TreePop();
-                        }
-
-                        CalculateStatsRealTime();
-
-                        // Moveset - 4 independent searches
-                        if (ImGui.TreeNode("Moveset (Max 4)"))
-                        {
-                            string[] availableMoveNames = _editedBasePokemon.Moves?.Select(m => m.Name).ToArray() ?? Array.Empty<string>();
-                            for (int i = 0; i < 4; i++)
-                            {
-                                string currentMove = i < _selectedMoves.Count
-                                    ? _selectedMoves[i].MoveData.Name
-                                    : "Empty";
-
-                                if (ImGui.BeginCombo($"Move {i + 1}", currentMove))
+                                ImGui.Spacing();
+                                // Nickname
+                                ImGui.InputText("Nickname", ref _editedNickname, 64);
+                                // Level
+                                if (ImGui.SliderInt("Level", ref _editedLevel, 1, 100))
                                 {
-                                    // Option to clear the move
-                                    if (ImGui.Selectable("Empty"))
+                                    CalculateStatsRealTime();
+                                }
+                                // Gender
+                                string[] genders = { "Male", "Female", "Genderless" };
+                                ImGui.Combo("Gender", ref _editedGenderIndex, genders, genders.Length);
+
+                                ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                // Nature Selection
+                                ImGui.Text("Nature:");
+                                ImGui.SetNextItemWidth(250);
+                                ImGui.InputText("##NatureSearch", ref _natureSearchFilter, 64);
+                                ImGui.SameLine();
+                                if (ImGui.Button("Clear##Nature"))
+                                {
+                                    _natureSearchFilter = "";
+                                }
+                                var natures = Nature.GetAllNatures();
+                                var filteredNatures = string.IsNullOrWhiteSpace(_natureSearchFilter)
+                                    ? natures
+                                    : natures.Where(n => n.Name.Contains(_natureSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+                                string currentNature = _editedNatureIndex >= 0 && _editedNatureIndex < natures.Count
+                                    ? natures[_editedNatureIndex].Name
+                                    : "Select";
+                                if (ImGui.BeginCombo("##NatureCombo", currentNature))
+                                {
+                                    foreach (var nature in filteredNatures)
                                     {
-                                        if (i < _selectedMoves.Count)
+                                        int idx = natures.IndexOf(nature);
+                                        bool isSelected = _editedNatureIndex == idx;
+                                        if (ImGui.Selectable(nature.Name, isSelected))
                                         {
-                                            _selectedMoves.RemoveAt(i);
+                                            _editedNatureIndex = idx;
+                                            CalculateStatsRealTime();
                                         }
-                                    }
-
-                                    // List filtered moves
-                                    foreach (var moveName in filteredMoves)
-                                    {
-                                        bool isSelected = currentMove == moveName;
-                                        if (ImGui.Selectable(moveName, isSelected))
-                                        {
-                                            var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
-
-                                            if (moveData != null)
-                                            {
-                                                var learnedMove = new LearnedMove(moveData, moveData.PP);
-
-                                                if (i < _selectedMoves.Count)
-                                                    _selectedMoves[i] = learnedMove;
-                                                else
-                                                    _selectedMoves.Add(learnedMove);
-                                            }
-                                        }
-
-                                        // Tooltip with move info
+                                        if (isSelected)
+                                            ImGui.SetItemDefaultFocus();
+                                        // Tooltip
                                         if (ImGui.IsItemHovered())
                                         {
-                                            var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
-                                            if (moveData != null)
+                                            ImGui.BeginTooltip();
+                                            ImGui.TextUnformatted(nature.Name);
+                                            if (nature.IsNeutral())
                                             {
-                                                string tooltip = $"{moveName}";
-                                                if (moveData.Power > 0)
-                                                    tooltip += $"\nPower: {moveData.Power}";
-                                                if (moveData.PP > 0)
-                                                    tooltip += $"\nPP: {moveData.PP}";
-                                                if (moveData.Accuracy > 0)
-                                                    tooltip += $"\nAccuracy: {moveData.Accuracy}%";
-
-
-                                                ImGui.SetTooltip(tooltip);
+                                                ImGui.TextUnformatted("Neutral (no stat changes)");
                                             }
+                                            else
+                                            {
+                                                string increasedStatName = FormatStatName(nature.IncreasedStat ?? "");
+                                                string decreasedStatName = FormatStatName(nature.DecreasedStat ?? "");
+                                                if (!string.IsNullOrEmpty(increasedStatName))
+                                                {
+                                                    ImGui.TextUnformatted($"+10% {increasedStatName}");
+                                                }
+                                                if (!string.IsNullOrEmpty(decreasedStatName))
+                                                {
+                                                    ImGui.TextUnformatted($"-10% {decreasedStatName}");
+                                                }
+                                            }
+                                            ImGui.EndTooltip();
                                         }
                                     }
                                     ImGui.EndCombo();
                                 }
-
                                 ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                // Ability Selection
+                                ImGui.Text("Ability:");
+                                ImGui.SetNextItemWidth(250);
+                                ImGui.InputText("##AbilitySearch", ref _abilitySearchFilter, 64);
+                                ImGui.SameLine();
+                                if (ImGui.Button("Clear##Ability"))
+                                {
+                                    _abilitySearchFilter = "";
+                                }
+                                // Use cached abilities (all ~300 from API)
+                                var abilities = PokemonService.GetCachedAbilities() ?? Ability.GetCommonAbilities();
+                                var filteredAbilities = string.IsNullOrWhiteSpace(_abilitySearchFilter)
+                                    ? abilities
+                                    : abilities.Where(a => a.Name.Contains(_abilitySearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+                                string currentAbility = _editedAbilityIndex >= 0 && _editedAbilityIndex < abilities.Count
+                                    ? abilities[_editedAbilityIndex].Name
+                                    : "Select";
+                                if (ImGui.BeginCombo("##AbilityCombo", currentAbility))
+                                {
+                                    foreach (var ability in filteredAbilities)
+                                    {
+                                        int idx = abilities.IndexOf(ability);
+                                        bool isSelected = _editedAbilityIndex == idx;
+                                        if (ImGui.Selectable(ability.Name, isSelected))
+                                        {
+                                            _editedAbilityIndex = idx;
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                        {
+                                            ImGui.BeginTooltip();
+                                            ImGui.TextUnformatted(ability.Name);
+                                            if (!string.IsNullOrEmpty(ability.Effect))
+                                            {
+                                                ImGui.TextUnformatted(ability.Effect);
+                                            }
+                                            ImGui.EndTooltip();
+                                        }
+                                    }
+                                    ImGui.EndCombo();
+                                }
+                                ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                // Item Selection
+                                ImGui.Text("Held Item:");
+                                ImGui.SetNextItemWidth(250);
+                                ImGui.InputText("##ItemSearch", ref _itemSearchFilter, 64);
+                                ImGui.SameLine();
+                                if (ImGui.Button("Clear##Item"))
+                                {
+                                    _itemSearchFilter = "";
+                                }
+                                // Use cached items (pre-loaded at startup)
+                                var items = PokemonService.GetCachedItems() ?? Item.GetCommonItems();
+                                var filteredItems = string.IsNullOrWhiteSpace(_itemSearchFilter)
+                                    ? items
+                                    : items.Where(i => i.Name.Contains(_itemSearchFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+                                string currentItem = _editedItemIndex >= 0 && _editedItemIndex < items.Count
+                                    ? items[_editedItemIndex].Name
+                                    : "None";
+                                if (ImGui.BeginCombo("##ItemCombo", currentItem))
+                                {
+                                    foreach (var item in filteredItems)
+                                    {
+                                        int idx = items.IndexOf(item);
+                                        bool isSelected = _editedItemIndex == idx;
+                                        if (ImGui.Selectable(item.Name, isSelected))
+                                        {
+                                            _editedItemIndex = idx;
+                                        }
+                                        if (ImGui.IsItemHovered())
+                                        {
+                                            // Fetch complete item details on hover
+                                            Item? itemDetails = null;
+                                            try
+                                            {
+                                                itemDetails = PokemonService.GetItemDetails(item.Name).GetAwaiter().GetResult();
+                                            }
+                                            catch { }
+
+                                            ImGui.BeginTooltip();
+
+                                            // Show item sprite if available (48x48 in tooltip)
+                                            if (itemDetails?.SpriteUrl != null)
+                                            {
+                                                var itemCachePath = $"cache/items/{itemDetails.Name.ToLower().Replace(" ", "-")}.png";
+
+                                                // Download if not cached
+                                                if (!File.Exists(itemCachePath))
+                                                {
+                                                    _ = Task.Run(async () => await ImageUrlLoader.LoadImageFromUrl(itemDetails.SpriteUrl, itemCachePath));
+                                                }
+
+                                                // Display sprite in tooltip
+                                                if (File.Exists(itemCachePath))
+                                                {
+                                                    AddOrGetImagePointer(itemCachePath, true, out var itemHandle, out _, out _);
+                                                    ImGui.Image(itemHandle, new Vector2(48, 48));
+                                                    ImGui.SameLine();
+                                                    ImGui.BeginGroup();
+                                                }
+                                            }
+
+                                            if (itemDetails != null)
+                                            {
+                                                // Item name (colored)
+                                                ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.4f, 1.0f), itemDetails.Name);
+
+                                                // Short description
+                                                if (!string.IsNullOrEmpty(itemDetails.Description))
+                                                {
+                                                    ImGui.Spacing();
+                                                    ImGui.PushTextWrapPos(300);
+                                                    ImGui.TextUnformatted(itemDetails.Description);
+                                                    ImGui.PopTextWrapPos();
+                                                }
+
+                                                ImGui.Separator();
+
+                                                // Stats
+                                                ImGui.TextUnformatted($"Category: {itemDetails.Category}");
+                                                if (itemDetails.Cost > 0)
+                                                    ImGui.TextUnformatted($"Cost: ₽{itemDetails.Cost}");
+                                                if (itemDetails.FlingPower.HasValue && itemDetails.FlingPower.Value > 0)
+                                                    ImGui.TextUnformatted($"Fling Power: {itemDetails.FlingPower}");
+
+                                                // End sprite group if it was opened
+                                                if (!string.IsNullOrEmpty(itemDetails.SpriteUrl))
+                                                {
+                                                    var itemCachePath = $"cache/items/{itemDetails.Name.ToLower().Replace(" ", "-")}.png";
+                                                    if (File.Exists(itemCachePath))
+                                                    {
+                                                        ImGui.EndGroup();
+                                                    }
+                                                }
+                                            }
+                                            else
+                                            {
+                                                // Fallback if API call failed
+                                                ImGui.TextUnformatted(item.Name);
+                                                if (!string.IsNullOrEmpty(item.Effect))
+                                                {
+                                                    ImGui.TextUnformatted(item.Effect);
+                                                }
+                                            }
+
+                                            ImGui.EndTooltip();
+                                        }
+                                    }
+                                    ImGui.EndCombo();
+                                }
+                                ImGui.EndTabItem();
                             }
-                            ImGui.TreePop();
-                        }
+                            // ==================== STATS TAB ====================
+                            if (ImGui.BeginTabItem("Stats"))
+                            {
+                                ImGui.Spacing();
+                                // IVs Section (no TreeNode)
+                                ImGui.TextColored(new Vector4(0.4f, 0.8f, 1.0f, 1.0f), "Individual Values (IVs) - Range: 0-31");
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                ImGui.SliderInt("HP IV", ref _editedIVsHP, 0, 31);
+                                ImGui.SliderInt("Attack IV", ref _editedIVsATTACK, 0, 31);
+                                ImGui.SliderInt("Defense IV", ref _editedIVsDEFENSE, 0, 31);
+                                ImGui.SliderInt("Sp.Atk IV", ref _editedIVsSPATTACK, 0, 31);
+                                ImGui.SliderInt("Sp.Def IV", ref _editedIVsSPDEFENSE, 0, 31);
+                                ImGui.SliderInt("Speed IV", ref _editedIVsSPEED, 0, 31);
+                                if (ImGui.Button("Max All IVs"))
+                                {
+                                    _editedIVsHP = 31;
+                                    _editedIVsATTACK = 31;
+                                    _editedIVsDEFENSE = 31;
+                                    _editedIVsSPATTACK = 31;
+                                    _editedIVsSPDEFENSE = 31;
+                                    _editedIVsSPEED = 31;
+                                }
+                                ImGui.Spacing();
+                                ImGui.Spacing();
+                                // EVs Section (no TreeNode)
+                                int totalEVs = StatsCalculator.GetTotalEVs(_editedEvs);
+                                ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), $"Effort Values (EVs) - Total: {totalEVs}/510");
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                ImGui.SliderInt("HP EV", ref _editedEVsHP, 0, 252);
+                                ImGui.SliderInt("Attack EV", ref _editedEVsATTACK, 0, 252);
+                                ImGui.SliderInt("Defense EV", ref _editedEVsDEFENSE, 0, 252);
+                                ImGui.SliderInt("Sp.Atk EV", ref _editedEVsSPATTACK, 0, 252);
+                                ImGui.SliderInt("Sp.Def EV", ref _editedEVsSPDEFENSE, 0, 252);
+                                ImGui.SliderInt("Speed EV", ref _editedEVsSPEED, 0, 252);
+                                var evValidation = StatsCalculator.ValidateEVs(_editedEvs);
+                                if (!evValidation.isValid)
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), evValidation.error);
+                                }
+                                CalculateStatsRealTime();
+                                ImGui.Spacing();
+                                ImGui.Spacing();
+                                // Calculated Stats Section (no TreeNode)
+                                ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.4f, 1.0f), "Final Calculated Stats");
+                                ImGui.Separator();
+                                ImGui.Spacing();
+                                ImGui.Text($"HP: {_editedCalculatedStats.HP}");
+                                ImGui.Text($"Attack: {_editedCalculatedStats.Attack}");
+                                ImGui.Text($"Defense: {_editedCalculatedStats.Defense}");
+                                ImGui.Text($"Sp.Atk: {_editedCalculatedStats.SpecialAttack}");
+                                ImGui.Text($"Sp.Def: {_editedCalculatedStats.SpecialDefense}");
+                                ImGui.Text($"Speed: {_editedCalculatedStats.Speed}");
+                                ImGui.EndTabItem();
+                            }
+                            // ==================== MOVESET TAB ====================
+                            if (ImGui.BeginTabItem("Moveset"))
+                            {
+                                ImGui.Spacing();
+                                // Moveset editor (removed TreeNode wrapper)
+                                string[] availableMoveNames = _editedBasePokemon.Moves?.Select(m => m.Name).ToArray() ?? Array.Empty<string>();
+                                for (int i = 0; i < 4; i++)
+                                {
+                                    string currentMove = i < _selectedMoves.Count
+                                        ? _selectedMoves[i].MoveData.Name
+                                        : "Empty";
+                                    // Individual search bar for each move
+                                    ImGui.Text($"Move {i + 1}:");
+                                    ImGui.SetNextItemWidth(250);
+                                    ImGui.InputText($"##MoveSearch{i}", ref _moveSearchFilters[i], 64);
+                                    ImGui.SameLine();
+                                    if (ImGui.Button($"Clear##Move{i}"))
+                                    {
+                                        _moveSearchFilters[i] = "";
+                                    }
+                                    // Filter moves based on individual search
+                                    var filteredMoves = string.IsNullOrWhiteSpace(_moveSearchFilters[i])
+                                        ? availableMoveNames
+                                        : availableMoveNames.Where(m => m.Contains(_moveSearchFilters[i], StringComparison.OrdinalIgnoreCase)).ToArray();
+                                    if (ImGui.BeginCombo($"##MoveCombo{i}", currentMove))
+                                    {
+                                        foreach (var moveName in filteredMoves)
+                                        {
+                                            bool isSelected = currentMove == moveName;
+                                            if (ImGui.Selectable(moveName, isSelected))
+                                            {
+                                                var moveData = _editedBasePokemon.Moves.FirstOrDefault(m => m.Name == moveName);
+                                                if (moveData != null)
+                                                {
+                                                    var learnedMove = new LearnedMove(moveData);
 
+                                                    // Replace move at this slot
+                                                    if (i < _selectedMoves.Count)
+                                                        _selectedMoves[i] = learnedMove;
+                                                    else
+                                                        _selectedMoves.Add(learnedMove);
+                                                }
+                                            }
+                                            // Tooltip with move info
+                                            if (ImGui.IsItemHovered())
+                                            {
+                                                var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
+                                                if (moveData != null)
+                                                {
+                                                    ImGui.BeginTooltip();
+                                                    // Header: Type icon + move name
+                                                    if (!string.IsNullOrEmpty(moveData.TypeName))
+                                                    {
+                                                        RenderMoveTypeIcon(moveData.TypeName, new Vector2(20, 20));
+                                                        ImGui.SameLine();
+                                                    }
+                                                    ImGui.TextUnformatted(moveName);
+                                                    // Description
+                                                    if (!string.IsNullOrEmpty(moveData.Description))
+                                                    {
+                                                        ImGui.Spacing();
+                                                        ImGui.PushTextWrapPos(300); // Wrap text at 300px
+                                                        ImGui.TextUnformatted(moveData.Description);
+                                                        ImGui.PopTextWrapPos();
+                                                    }
+                                                    // Separator
+                                                    ImGui.Separator();
+                                                    // Battle stats
+                                                    if (!string.IsNullOrEmpty(moveData.TypeName))
+                                                    {
+                                                        ImGui.TextUnformatted($"Type: {moveData.TypeName} | Class: {FormatDamageClass(moveData.DamageClass)}");
+                                                    }
+                                                    else
+                                                    {
+                                                        ImGui.TextUnformatted($"Class: {FormatDamageClass(moveData.DamageClass)}");
+                                                    }
+                                                    // Power and PP on same line
+                                                    string powerText = moveData.Power > 0 ? moveData.Power.ToString() : "—";
+                                                    ImGui.TextUnformatted($"Power: {powerText} | PP: {moveData.PP}");
+                                                    // Accuracy
+                                                    if (moveData.Accuracy > 0)
+                                                    {
+                                                        ImGui.TextUnformatted($"Accuracy: {moveData.Accuracy}%");
+                                                    }
+                                                    // Priority (only if non-zero)
+                                                    if (moveData.Priority != 0)
+                                                    {
+                                                        ImGui.TextUnformatted($"Priority: {moveData.Priority}");
+                                                    }
+                                                    ImGui.EndTooltip();
+                                                }
+                                            }
+                                        }
+                                        ImGui.EndCombo();
+                                    }
+                                    ImGui.Spacing();
+                                }
+                                ImGui.EndTabItem();
+                            }
+
+                            // ==================== BASE STATS TAB ====================
+                            if (ImGui.BeginTabItem("Base Stats"))
+                            {
+                                ImGui.Spacing();
+                                ImGui.TextColored(new Vector4(0.4f, 0.8f, 1.0f, 1.0f), "Base Stats (Species Stats)");
+                                ImGui.Separator();
+                                ImGui.Spacing();
+
+                                if (_editedBasePokemon?.BaseStats != null)
+                                {
+                                    // Stat names from PokeAPI
+                                    var statNames = new[] { "hp", "attack", "defense", "special-attack", "special-defense", "speed" };
+                                    var statLabels = new[] { "HP", "Attack", "Defense", "Sp. Atk", "Sp. Def", "Speed" };
+
+                                    for (int i = 0; i < statNames.Length; i++)
+                                    {
+                                        var statName = statNames[i];
+                                        var label = statLabels[i];
+                                        var value = _editedBasePokemon.BaseStats.HP; // placeholder - will use proper lookup
+
+                                        // For now, show placeholder data
+                                        if (statName == "hp") value = _editedBasePokemon.BaseStats.HP;
+                                        else if (statName == "attack") value = _editedBasePokemon.BaseStats.Attack;
+                                        else if (statName == "defense") value = _editedBasePokemon.BaseStats.Defense;
+                                        else if (statName == "special-attack") value = _editedBasePokemon.BaseStats.SpecialAttack;
+                                        else if (statName == "special-defense") value = _editedBasePokemon.BaseStats.SpecialDefense;
+                                        else if (statName == "speed") value = _editedBasePokemon.BaseStats.Speed;
+
+                                        // Label
+                                        ImGui.Text($"{label}:");
+                                        ImGui.SameLine(120);
+
+                                        // Value
+                                        ImGui.Text($"{value}");
+                                        ImGui.SameLine(180);
+
+                                        // Progress bar (relative to 255 max)
+                                        var percent = value / 255f;
+                                        var color = GetStatColor(value);
+
+                                        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, color);
+                                        ImGui.ProgressBar(percent, new Vector2(300, 22), "");
+                                        ImGui.PopStyleColor();
+                                    }
+
+                                    // Total base stat
+                                    var total = _editedBasePokemon.BaseStats.HP +
+                                               _editedBasePokemon.BaseStats.Attack +
+                                               _editedBasePokemon.BaseStats.Defense +
+                                               _editedBasePokemon.BaseStats.SpecialAttack +
+                                               _editedBasePokemon.BaseStats.SpecialDefense +
+                                               _editedBasePokemon.BaseStats.Speed;
+
+                                    ImGui.Spacing();
+                                    ImGui.Separator();
+                                    ImGui.Spacing();
+                                    ImGui.TextColored(new Vector4(1, 1, 0.3f, 1), $"Total Base Stat: {total}");
+                                }
+                                else
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "⚠️ Base stats not loaded");
+                                    ImGui.Text("Stats will load when Pokemon is fully cached.");
+                                }
+
+                                ImGui.EndTabItem();
+                            }
+
+                            ImGui.EndTabBar();
+                        }
                         ImGui.Spacing();
-
-                        if (ImGui.TreeNode("Calculated Stats"))
-                        {
-                            ImGui.Text($"HP: {_editedCalculatedStats.HP}");
-                            ImGui.Text($"Attack: {_editedCalculatedStats.Attack}");
-                            ImGui.Text($"Defense: {_editedCalculatedStats.Defense}");
-                            ImGui.Text($"Sp.Atk: {_editedCalculatedStats.SpecialAttack}");
-                            ImGui.Text($"Sp.Def: {_editedCalculatedStats.SpecialDefense}");
-                            ImGui.Text($"Speed: {_editedCalculatedStats.Speed}");
-                            ImGui.TreePop();
-                        }
-
+                        // Save/Cancel buttons (outside tabs, always visible)
                         if (ImGui.Button("Save"))
                         {
                             SavePokemonEditor();
                         }
-
                         ImGui.SameLine();
-
                         if (ImGui.Button("Cancel"))
                         {
                             _showPokemonEditorWindow = false;
                             _editedBasePokemon = null;
                         }
-
                         ImGui.End();
                     }
                 }
@@ -1682,6 +2139,99 @@ namespace PasaporteFiller
                 ImGui.Text($"Latest Pokémon Name:{ScreenTextRecognizer.LastRecognizedPokemonName}");
                 ImGui.End();
             }
+        }
+
+        private void StartBackgroundLoading()
+        {
+            if (_backgroundLoadingTask != null) return; // Already started
+
+            var progress = new Progress<LoadingProgress>(p =>
+            {
+                _backgroundProgress = p; // Update for overlay rendering
+            });
+
+            _backgroundLoadingTask = Task.Run(async () =>
+                await DataLoader.LoadBackgroundData(progress));
+        }
+
+        private void RenderBackgroundLoadingOverlay()
+        {
+            if (DataLoader.IsBackgroundLoadComplete) return;
+
+            // Semi-transparent overlay at bottom-right
+            var windowSize = ImGui.GetIO().DisplaySize;
+            ImGui.SetNextWindowPos(new Vector2(windowSize.X - 420, windowSize.Y - 100));
+            ImGui.SetNextWindowSize(new Vector2(400, 90));
+            ImGui.SetNextWindowBgAlpha(0.95f);
+
+            ImGui.Begin("##BackgroundLoading",
+                ImGuiWindowFlags.NoTitleBar |
+                ImGuiWindowFlags.NoResize |
+                ImGuiWindowFlags.NoMove |
+                ImGuiWindowFlags.NoCollapse);
+
+            ImGui.TextColored(new Vector4(0.4f, 0.8f, 1.0f, 1.0f), "📦 Loading Pokemon Data...");
+
+            if (_backgroundProgress != null)
+            {
+                var percent = (float)(_backgroundProgress.Percentage / 100.0);
+                ImGui.ProgressBar(percent, new Vector2(-1, 20),
+                    $"{_backgroundProgress.Current}/{_backgroundProgress.Total} ({_backgroundProgress.Percentage:F1}%)");
+
+                if (_backgroundProgress.EstimatedTimeRemaining.HasValue)
+                {
+                    var eta = _backgroundProgress.EstimatedTimeRemaining.Value;
+                    var hours = eta.Hours;
+                    var minutes = eta.Minutes;
+
+                    if (hours > 0)
+                        ImGui.Text($"⏱️ ~{hours}h {minutes}m remaining");
+                    else
+                        ImGui.Text($"⏱️ ~{minutes}m remaining");
+                }
+            }
+            else
+            {
+                ImGui.ProgressBar(0f, new Vector2(-1, 20), "Starting...");
+            }
+
+            ImGui.End();
+        }
+
+        private Vector4 GetStatColor(int statValue)
+        {
+            // Color coding for base stats
+            if (statValue >= 150) return new Vector4(0, 1, 0, 1);        // Bright green (excellent)
+            if (statValue >= 100) return new Vector4(0.5f, 1, 0, 1);     // Yellow-green (good)
+            if (statValue >= 70) return new Vector4(1, 1, 0, 1);         // Yellow (average)
+            if (statValue >= 50) return new Vector4(1, 0.7f, 0, 1);      // Orange (below average)
+            return new Vector4(1, 0.3f, 0, 1);                            // Red-orange (poor)
+        }
+
+        private IntPtr GetTypeImageHandle(string typeName)
+        {
+            return typeName.ToLower() switch
+            {
+                "fire" => FireTypeImageHandle,
+                "water" => WaterTypeImageHandle,
+                "grass" => GrassTypeImageHandle,
+                "electric" => ElectricTypeImageHandle,
+                "normal" => NormalTypeImageHandle,
+                "fighting" => FightingTypeImageHandle,
+                "flying" => FlyingTypeImageHandle,
+                "poison" => PoisonTypeImageHandle,
+                "ground" => GroundTypeImageHandle,
+                "rock" => RockTypeImageHandle,
+                "bug" => BugTypeImageHandle,
+                "ghost" => GhostTypeImageHandle,
+                "steel" => SteelTypeImageHandle,
+                "psychic" => PsychicTypeImageHandle,
+                "ice" => IceTypeImageHandle,
+                "dragon" => DragonTypeImageHandle,
+                "dark" => DarkTypeImageHandle,
+                "fairy" => FairyTypeImageHandle,
+                _ => IntPtr.Zero
+            };
         }
     }
 }
