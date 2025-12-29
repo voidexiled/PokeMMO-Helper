@@ -411,13 +411,53 @@ public static class PokemonService
             var response = await _httpClient.GetStringAsync($"https://pokeapi.co/api/v2/move/{cacheKey}");
             var json = JObject.Parse(response);
 
+            // Extract damage class
+            string damageClassStr = json["damage_class"]?["name"]?.ToString() ?? "physical";
+            MoveDamageClass damageClass = damageClassStr.ToLower() switch
+            {
+                "physical" => MoveDamageClass.Physical,
+                "special" => MoveDamageClass.Special,
+                "status" => MoveDamageClass.Status,
+                _ => MoveDamageClass.Physical
+            };
+
+            // Extract target
+            string targetStr = json["target"]?["name"]?.ToString() ?? "selected-pokemon";
+            MoveTarget target = targetStr.ToLower() switch
+            {
+                "selected-pokemon" => MoveTarget.SelectedPokemon,
+                "all-opponents" => MoveTarget.AllOpponents,
+                "all-other-pokemon" => MoveTarget.AllOtherPokemon,
+                "user" => MoveTarget.User,
+                "user-and-allies" => MoveTarget.UserAndAllies,
+                "all-pokemon" => MoveTarget.AllPokemon,
+                "random-opponent" => MoveTarget.RandomOpponent,
+                "all-allies" => MoveTarget.AllAllies,
+                "user-or-ally" => MoveTarget.UserOrAlly,
+                "opponents-field" => MoveTarget.OpponentsField,
+                "users-field" => MoveTarget.UsersField,
+                "entire-field" => MoveTarget.EntireField,
+                _ => MoveTarget.SelectedPokemon
+            };
+
+            // Extract type name
+            string typeName = json["type"]?["name"]?.ToString() ?? "";
+            if (!string.IsNullOrEmpty(typeName))
+            {
+                typeName = char.ToUpper(typeName[0]) + typeName.Substring(1);
+            }
+
             var move = new PokemonMove
             {
                 Name = char.ToUpper(moveName[0]) + moveName.Substring(1).Replace("-", " "),
-                Power = (int)(json["power"] ?? 0),
-                PP = (int)(json["pp"] ?? 0),
-                Accuracy = (int)(json["accuracy"] ?? 0),
-                Description = json["effect_entries"]?[0]?["short_effect"]?.ToString() ?? "No description available"
+                Power = json["power"]?.Value<int?>() ?? 0,
+                PP = json["pp"]?.Value<int?>() ?? 0,
+                Accuracy = json["accuracy"]?.Value<int?>() ?? 0,
+                Priority = json["priority"]?.Value<int?>() ?? 0,
+                TypeName = typeName,
+                DamageClass = damageClass,
+                Target = target,
+                Description = json["effect_entries"]?.FirstOrDefault(e => e["language"]?["name"]?.ToString() == "en")?["short_effect"]?.ToString() ?? "No description available"
             };
 
             // Cache it
@@ -428,11 +468,11 @@ public static class PokemonService
         {
             Console.WriteLine($"Failed to fetch move {moveName}: {e.Message}");
             return null;
-            return null;
         }
     }
 
     #region Items
+
 
     public static async Task<List<Item>> GetAllItems()
     {
@@ -473,23 +513,52 @@ public static class PokemonService
 
     public static async Task<Item?> GetItemDetails(string itemName)
     {
-        if (_itemCache.ContainsKey(itemName)) return _itemCache[itemName];
-
         try
         {
-            var response = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}{itemName.ToLower().Replace(" ", "-")}");
+            // Check cache first
+            string cacheKey = itemName.ToLower().Replace(" ", "-");
+            if (_itemCache.ContainsKey(cacheKey))
+            {
+                return _itemCache[cacheKey];
+            }
+
+            // Fetch from API
+            var response = await _httpClient.GetStringAsync($"{POKEMON_ITEM_API_URL}{cacheKey}");
             var json = JObject.Parse(response);
 
-            string category = json["category"]?["name"]?.ToString() ?? "other";
-            string effect = json["effect_entries"]?.FirstOrDefault()?["effect"]?.ToString() ?? "";
-            string sprite = json["sprites"]?["default"]?.ToString() ?? "";
+            // Extract category
+            string categoryName = json["category"]?["name"]?.ToString() ?? "held-items";
+            ItemCategory category = MapItemCategory(categoryName);
 
-            var item = new Item(FormatItemName(itemName), MapItemCategory(category), effect, sprite);
-            _itemCache[itemName] = item;
+            // Extract effect and description using FirstOrDefault to avoid index out of range
+            var effectEntry = json["effect_entries"]?.FirstOrDefault(e => e["language"]?["name"]?.ToString() == "en");
+            string shortEffect = effectEntry?["short_effect"]?.ToString() ?? "";
+            string description = effectEntry?["effect"]?.ToString() ?? shortEffect;
+
+            // Extract cost and fling power
+            int cost = json["cost"]?.Value<int?>() ?? 0;
+            int? flingPower = json["fling_power"]?.Value<int?>();
+
+            // Extract sprite URL
+            string spriteUrl = json["sprites"]?["default"]?.ToString() ?? "";
+
+            var item = new Item(
+                name: FormatItemName(itemName),
+                category: category,
+                description: description,
+                effect: shortEffect,
+                cost: cost,
+                flingPower: flingPower,
+                spriteUrl: spriteUrl
+            );
+
+            // Cache it
+            _itemCache[cacheKey] = item;
             return item;
         }
-        catch
+        catch (Exception e)
         {
+            Console.WriteLine($"Failed to fetch item {itemName}: {e.Message}");
             return null;
         }
     }
@@ -499,6 +568,24 @@ public static class PokemonService
         return category.ToLower() switch
         {
             "stat-boosts" => ItemCategory.StatBoost,
+            "effort-drop" => ItemCategory.StatBoost,
+            "medicine" => ItemCategory.Recovery,
+            "other" => ItemCategory.Other,
+            "in-a-pinch" => ItemCategory.Berry,
+            "picky-healing" => ItemCategory.Berry,
+            "type-enhancement" => ItemCategory.TypeBoost,
+            "baking-only" => ItemCategory.Berry,
+            "collectibles" => ItemCategory.Other,
+            "evolution" => ItemCategory.Other,
+            "spelunking" => ItemCategory.Other,
+            "held-items" => ItemCategory.Other,
+            "choice" => ItemCategory.StatBoost,
+            "effort-training" => ItemCategory.StatBoost,
+            "bad-held-items" => ItemCategory.Other,
+            "training" => ItemCategory.StatBoost,
+            "plates" => ItemCategory.TypeBoost,
+            "species-specific" => ItemCategory.Other,
+            "type-protection" => ItemCategory.Protection,
             _ => ItemCategory.Other
         };
     }
@@ -533,7 +620,8 @@ public static class PokemonService
                 string abilityName = abilityObj["name"]?.ToString() ?? "";
                 if (!string.IsNullOrEmpty(abilityName))
                 {
-                    abilities.Add(new Ability(FormatAbilityName(abilityName), ""));
+                    // Create ability with name only - description and effect will be loaded later via GetAbilityDetails
+                    abilities.Add(new Ability(FormatAbilityName(abilityName), "", "")); // Name, Description (empty), Effect (empty)
                 }
             }
 
@@ -559,21 +647,34 @@ public static class PokemonService
 
     public static async Task<Ability?> GetAbilityDetails(string abilityName)
     {
-        if (_abilityCache.ContainsKey(abilityName)) return _abilityCache[abilityName];
+        string cacheKey = abilityName.ToLower().Replace(" ", "-");
+        Console.WriteLine($"[GetAbilityDetails] Called with: '{abilityName}' | CacheKey: '{cacheKey}'");
 
+        if (_abilityCache.ContainsKey(cacheKey))
+        {
+            var cached = _abilityCache[cacheKey];
+            Console.WriteLine($"[GetAbilityDetails] Found in cache: Effect='{cached.Effect}'");
+            return cached;
+        }
+
+        Console.WriteLine($"[GetAbilityDetails] Not in cache, calling API...");
         try
         {
-            var response = await _httpClient.GetStringAsync($"{POKEMON_ABILITY_API_URL}{abilityName.ToLower().Replace(" ", "-")}");
+            var response = await _httpClient.GetStringAsync($"{POKEMON_ABILITY_API_URL}{cacheKey}");
             var json = JObject.Parse(response);
+            Console.WriteLine($"[GetAbilityDetails] API response received, parsing...");
 
             string effect = json["effect_entries"]?.FirstOrDefault(e => e["language"]?["name"]?.ToString() == "en")?["effect"]?.ToString() ?? "";
+            Console.WriteLine($"[GetAbilityDetails] Extracted effect: '{effect}'");
 
-            var ability = new Ability(FormatAbilityName(abilityName), effect);
-            _abilityCache[abilityName] = ability;
+            var ability = new Ability(FormatAbilityName(abilityName), "", effect); // Name, Description (empty), Effect
+            _abilityCache[cacheKey] = ability;
+            Console.WriteLine($"[GetAbilityDetails] Cached ability with key '{cacheKey}'");
             return ability;
         }
-        catch
+        catch (Exception e)
         {
+            Console.WriteLine($"[GetAbilityDetails] ERROR: {e.Message}");
             return null;
         }
     }
@@ -696,7 +797,8 @@ public static class PokemonService
 
     public static CacheData GetCacheData()
     {
-        var pokemonObjects = _allPokemon?.Select(name => new Pokemon { Name = name }).ToList() ?? [];
+        // Use _pokemonCache which contains FULL Pokemon data (Types, Moves, BaseStats, etc.)
+        var pokemonObjects = _pokemonCache.Values.ToList();
 
         return new CacheData
         {

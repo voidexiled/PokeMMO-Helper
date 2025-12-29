@@ -166,6 +166,393 @@ namespace PasaporteFiller
             };
         }
 
+        /// <summary>
+        /// Returns color for move power based on strength
+        /// </summary>
+        private Vector4 GetPowerColor(int power)
+        {
+            return power switch
+            {
+                >= 100 => new Vector4(0.2f, 1.0f, 0.2f, 1.0f),  // Green - Very strong
+                >= 60 => new Vector4(1.0f, 1.0f, 0.2f, 1.0f),   // Yellow - Decent
+                > 0 => new Vector4(0.4f, 0.8f, 1.0f, 1.0f),     // Blue - Weak
+                _ => new Vector4(0.7f, 0.7f, 0.7f, 1.0f)        // Gray - Status move
+            };
+        }
+
+        /// <summary>
+        /// Renders a colored badge for damage class
+        /// </summary>
+        private void RenderDamageClassBadge(MoveDamageClass damageClass)
+        {
+            var (text, color) = damageClass switch
+            {
+                MoveDamageClass.Physical => ("PHYSICAL", new Vector4(0.9f, 0.5f, 0.2f, 1.0f)),  // Orange
+                MoveDamageClass.Special => ("SPECIAL", new Vector4(0.6f, 0.35f, 0.7f, 1.0f)),   // Purple
+                MoveDamageClass.Status => ("STATUS", new Vector4(0.2f, 0.6f, 0.9f, 1.0f)),      // Blue
+                _ => ("UNKNOWN", new Vector4(0.5f, 0.5f, 0.5f, 1.0f))
+            };
+
+            // Center the badge
+            var textSize = ImGui.CalcTextSize(text);
+            ImGui.Indent((320 - textSize.X) / 2); // Center in 320px tooltip
+            ImGui.PushStyleColor(ImGuiCol.Button, color);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color * 1.2f);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, color * 0.8f);
+            ImGui.SmallButton(text);
+            ImGui.PopStyleColor(3);
+            ImGui.Unindent((320 - textSize.X) / 2);
+        }
+
+        /// <summary>
+        /// Formats move target with icon
+        /// </summary>
+        private static string FormatMoveTarget(MoveTarget target)
+        {
+            return target switch
+            {
+                MoveTarget.SelectedPokemon => "Target: Single Pokemon",
+                MoveTarget.AllOpponents => "Target: All Opponents",
+                MoveTarget.AllOtherPokemon => "Target: All Other Pokemon",
+                MoveTarget.User => "Target: Self",
+                MoveTarget.UserAndAllies => "Target: User & Allies",
+                MoveTarget.AllPokemon => "Target: All Pokemon",
+                MoveTarget.RandomOpponent => "Target: Random Opponent",
+                MoveTarget.AllAllies => "Target: All Allies",
+                MoveTarget.UserOrAlly => "Target: User or Ally",
+                MoveTarget.OpponentsField => "Target: Opponent's Field",
+                MoveTarget.UsersField => "Target: User's Field",
+                MoveTarget.EntireField => "Target: Entire Field",
+                _ => "Target: Unknown"
+            };
+        }
+
+        /// <summary>
+        /// Returns color for Pokemon type
+        /// </summary>
+        private Vector4 GetTypeColor(string typeName)
+        {
+            return typeName.ToLower() switch
+            {
+                "fire" => new Vector4(0.93f, 0.51f, 0.19f, 1.0f),       // Orange-red
+                "water" => new Vector4(0.39f, 0.56f, 0.93f, 1.0f),      // Blue
+                "grass" => new Vector4(0.48f, 0.78f, 0.30f, 1.0f),      // Green
+                "electric" => new Vector4(0.98f, 0.84f, 0.25f, 1.0f),   // Yellow
+                "normal" => new Vector4(0.66f, 0.66f, 0.47f, 1.0f),     // Tan
+                "fighting" => new Vector4(0.75f, 0.19f, 0.15f, 1.0f),   // Dark red
+                "flying" => new Vector4(0.66f, 0.71f, 0.95f, 1.0f),     // Light blue
+                "poison" => new Vector4(0.64f, 0.25f, 0.65f, 1.0f),     // Purple
+                "ground" => new Vector4(0.89f, 0.75f, 0.42f, 1.0f),     // Sandy
+                "rock" => new Vector4(0.72f, 0.64f, 0.42f, 1.0f),       // Brown
+                "bug" => new Vector4(0.65f, 0.75f, 0.19f, 1.0f),        // Yellow-green
+                "ghost" => new Vector4(0.44f, 0.35f, 0.60f, 1.0f),      // Dark purple
+                "steel" => new Vector4(0.72f, 0.72f, 0.82f, 1.0f),      // Silver
+                "psychic" => new Vector4(0.98f, 0.41f, 0.55f, 1.0f),    // Pink
+                "ice" => new Vector4(0.60f, 0.85f, 0.85f, 1.0f),        // Cyan
+                "dragon" => new Vector4(0.44f, 0.22f, 0.98f, 1.0f),     // Purple-blue
+                "dark" => new Vector4(0.44f, 0.35f, 0.30f, 1.0f),       // Dark brown
+                "fairy" => new Vector4(0.85f, 0.52f, 0.73f, 1.0f),      // Pink
+                _ => new Vector4(1.0f, 1.0f, 1.0f, 1.0f)                // White
+            };
+        }
+
+        /// <summary>
+        /// Calculates move power with STAB (Same Type Attack Bonus) if applicable
+        /// Returns null if no STAB bonus
+        /// </summary>
+        private int? CalculateSTABPower(PokemonMove move, Pokemon pokemon)
+        {
+            if (string.IsNullOrEmpty(move.TypeName) || pokemon?.Types == null || pokemon.Types.Count == 0)
+                return null;
+
+            // Check if move type matches any of Pokemon's types
+            bool hasSTAB = pokemon.Types.Any(t =>
+                t.Name.Equals(move.TypeName, StringComparison.OrdinalIgnoreCase));
+
+            if (hasSTAB && move.Power > 0)
+            {
+                return (int)(move.Power * 1.5f); // STAB is 1.5x damage
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Gets type effectiveness for a move type using cached Pokemon type data
+        /// Returns lists of super effective and not very effective types
+        /// </summary>
+        private (List<string> superEffective, List<string> notEffective) GetMoveEffectiveness(string moveType)
+        {
+            var superEffective = new List<string>();
+            var notEffective = new List<string>();
+
+            if (string.IsNullOrEmpty(moveType))
+                return (superEffective, notEffective);
+
+            try
+            {
+                // Get type effectiveness from Pokemon API
+                // Index 3 = double damage to, 4 = half damage to, 5 = no damage to
+                var effectiveness = PokemonService.GetTypeWeaknessesAndStrengths(moveType).GetAwaiter().GetResult();
+
+                if (effectiveness != null && effectiveness.Count >= 6)
+                {
+                    superEffective = effectiveness[3] ?? new List<string>();
+                    notEffective = (effectiveness[4] ?? new List<string>())
+                        .Concat(effectiveness[5] ?? new List<string>())
+                        .ToList();
+                }
+            }
+            catch
+            {
+                // If API call fails, return empty lists
+            }
+
+            return (superEffective, notEffective);
+        }
+
+        /// <summary>
+        /// Renders a compact type effectiveness preview
+        /// </summary>
+        private void RenderEffectivenessPreview(string moveType, float maxWidth)
+        {
+            var (superEffective, notEffective) = GetMoveEffectiveness(moveType);
+
+            if (superEffective.Count > 0)
+            {
+                ImGui.TextColored(new Vector4(0.3f, 1.0f, 0.3f, 1.0f), "Super effective:");
+                ImGui.SameLine();
+
+                // Render type icons in a compact row
+                foreach (var type in superEffective.Take(6)) // Limit to 6 for space
+                {
+                    RenderMoveTypeIcon(type, new Vector2(16, 16));
+                    ImGui.SameLine();
+                }
+                ImGui.NewLine();
+            }
+
+            if (notEffective.Count > 0)
+            {
+                ImGui.TextColored(new Vector4(1.0f, 0.5f, 0.3f, 1.0f), "Not very effective:");
+                ImGui.SameLine();
+
+                // Render type icons in a compact row
+                foreach (var type in notEffective.Take(6)) // Limit to 6 for space
+                {
+                    RenderMoveTypeIcon(type, new Vector2(16, 16));
+                    ImGui.SameLine();
+                }
+                ImGui.NewLine();
+            }
+        }
+
+        /// <summary>
+        /// Renders Pokemon type badges and effectiveness information
+        /// </summary>
+        private void RenderPokemonTypeInfo(Pokemon pokemon)
+        {
+            if (pokemon?.Types == null || pokemon.Types.Count == 0)
+                return;
+
+            ImGui.BeginGroup();
+
+            // Header
+            ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1.0f), "Type & Effectiveness");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            // Pokemon Types with icons
+            ImGui.Text("Types:");
+            ImGui.SameLine();
+            foreach (var type in pokemon.Types)
+            {
+                RenderMoveTypeIcon(type.Name, new Vector2(32, 32));
+
+                // Tooltip with type name
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.TextColored(GetTypeColor(type.Name), char.ToUpper(type.Name[0]) + type.Name.Substring(1));
+                    ImGui.EndTooltip();
+                }
+
+                ImGui.SameLine();
+            }
+            ImGui.NewLine();
+
+            ImGui.Spacing();
+
+            // Calculate combined effectiveness
+            var effectiveness = CalculateCombinedEffectiveness(pokemon);
+
+            // Weaknesses (damage taken)
+            var weaknesses4x = effectiveness.Where(e => e.Value >= 3.9f).ToList();
+            var weaknesses2x = effectiveness.Where(e => e.Value >= 1.9f && e.Value < 3.9f).ToList();
+
+            if (weaknesses4x.Any() || weaknesses2x.Any())
+            {
+                ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "Weak to:");
+
+                if (weaknesses4x.Any())
+                {
+                    ImGui.Text("  4x:");
+                    ImGui.SameLine();
+                    foreach (var w in weaknesses4x)
+                    {
+                        RenderMoveTypeIcon(w.Key, new Vector2(32, 32));
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.TextColored(GetTypeColor(w.Key), w.Key);
+                            ImGui.EndTooltip();
+                        }
+                        ImGui.SameLine();
+                    }
+                    ImGui.NewLine();
+                }
+
+                if (weaknesses2x.Any())
+                {
+                    ImGui.Text("  2x:");
+                    ImGui.SameLine();
+                    foreach (var w in weaknesses2x)
+                    {
+                        RenderMoveTypeIcon(w.Key, new Vector2(32, 32));
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.TextColored(GetTypeColor(w.Key), w.Key);
+                            ImGui.EndTooltip();
+                        }
+                        ImGui.SameLine();
+                    }
+                    ImGui.NewLine();
+                }
+
+                ImGui.Spacing();
+            }
+
+            // Resistances (reduced damage)
+            var resistances14x = effectiveness.Where(e => e.Value <= 0.26f && e.Value > 0).ToList();
+            var resistances12x = effectiveness.Where(e => e.Value <= 0.51f && e.Value > 0.26f).ToList();
+
+            if (resistances14x.Any() || resistances12x.Any())
+            {
+                ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), "Resistant to:");
+
+                if (resistances14x.Any())
+                {
+                    ImGui.Text("  1/4x:");
+                    ImGui.SameLine();
+                    foreach (var r in resistances14x)
+                    {
+                        RenderMoveTypeIcon(r.Key, new Vector2(32, 32));
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.TextColored(GetTypeColor(r.Key), r.Key);
+                            ImGui.EndTooltip();
+                        }
+                        ImGui.SameLine();
+                    }
+                    ImGui.NewLine();
+                }
+
+                if (resistances12x.Any())
+                {
+                    ImGui.Text("  1/2x:");
+                    ImGui.SameLine();
+                    foreach (var r in resistances12x)
+                    {
+                        RenderMoveTypeIcon(r.Key, new Vector2(32, 32));
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.TextColored(GetTypeColor(r.Key), r.Key);
+                            ImGui.EndTooltip();
+                        }
+                        ImGui.SameLine();
+                    }
+                    ImGui.NewLine();
+                }
+
+                ImGui.Spacing();
+            }
+
+            // Immunities
+            var immunities = effectiveness.Where(e => e.Value == 0f).ToList();
+            if (immunities.Any())
+            {
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 1.0f, 1.0f), "Immune to:");
+                ImGui.SameLine();
+                foreach (var imm in immunities)
+                {
+                    RenderMoveTypeIcon(imm.Key, new Vector2(32, 32));
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.BeginTooltip();
+                        ImGui.TextColored(GetTypeColor(imm.Key), imm.Key);
+                        ImGui.EndTooltip();
+                    }
+                    ImGui.SameLine();
+                }
+                ImGui.NewLine();
+            }
+
+            ImGui.EndGroup();
+        }
+
+        /// <summary>
+        /// Calculates combined type effectiveness for all types
+        /// </summary>
+        private Dictionary<string, float> CalculateCombinedEffectiveness(Pokemon pokemon)
+        {
+            var combined = new Dictionary<string, float>();
+
+            if (pokemon?.Types == null || pokemon.Types.Count == 0)
+                return combined;
+
+            // Get all possible attacking types
+            var allTypes = new[] { "normal", "fire", "water", "electric", "grass", "ice", "fighting",
+                "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon",
+                "dark", "steel", "fairy" };
+
+            foreach (var attackType in allTypes)
+            {
+                float multiplier = 1.0f;
+
+                // Multiply effectiveness from each of Pokemon's types
+                foreach (var defenseType in pokemon.Types)
+                {
+                    var typeEffectiveness = GetTypeMultiplier(attackType, defenseType);
+                    multiplier *= typeEffectiveness;
+                }
+
+                combined[char.ToUpper(attackType[0]) + attackType.Substring(1)] = multiplier;
+            }
+
+            return combined;
+        }
+
+        /// <summary>
+        /// Gets type multiplier for attack type vs defense type
+        /// </summary>
+        private float GetTypeMultiplier(string attackType, PokemonType defenseType)
+        {
+            if (defenseType.NoDamageFrom?.Any(t => t.Equals(attackType, StringComparison.OrdinalIgnoreCase)) == true)
+                return 0f;
+
+            if (defenseType.DoubleDamageFrom?.Any(t => t.Equals(attackType, StringComparison.OrdinalIgnoreCase)) == true)
+                return 2f;
+
+            if (defenseType.HalfDamageFrom?.Any(t => t.Equals(attackType, StringComparison.OrdinalIgnoreCase)) == true)
+                return 0.5f;
+
+            return 1f;
+        }
+
+
         private static void ImGuiStyle_Red()
         {
             // Moonlight styleMadam-Herta from ImThemes
@@ -1603,11 +1990,34 @@ namespace PasaporteFiller
                                         }
                                         if (ImGui.IsItemHovered())
                                         {
-                                            ImGui.BeginTooltip();
-                                            ImGui.TextUnformatted(ability.Name);
-                                            if (!string.IsNullOrEmpty(ability.Effect))
+                                            // Fetch complete ability details (with effect)
+                                            Console.WriteLine($"{ability.Name} - {ability.Description} - {ability.Effect}");
+                                            Ability? abilityData = ability; // Start with cached basic data
+
+                                            // Try to enhance with full API data if effect is missing
+                                            if (string.IsNullOrEmpty(abilityData.Effect))
                                             {
-                                                ImGui.TextUnformatted(ability.Effect);
+                                                try
+                                                {
+                                                    var fullAbility = PokemonService.GetAbilityDetails(ability.Name).GetAwaiter().GetResult();
+                                                    if (fullAbility != null && !string.IsNullOrEmpty(fullAbility.Effect))
+                                                    {
+                                                        abilityData = fullAbility;
+                                                    }
+                                                }
+                                                catch
+                                                {
+                                                    // Continue with basic data
+                                                }
+                                            }
+
+                                            ImGui.BeginTooltip();
+                                            ImGui.TextColored(new Vector4(1.0f, 0.8f, 0.4f, 1.0f), abilityData.Name);
+                                            if (!string.IsNullOrEmpty(abilityData.Effect))
+                                            {
+                                                ImGui.PushTextWrapPos(320);
+                                                ImGui.TextUnformatted(abilityData.Effect);
+                                                ImGui.PopTextWrapPos();
                                             }
                                             ImGui.EndTooltip();
                                         }
@@ -1733,6 +2143,7 @@ namespace PasaporteFiller
                                     }
                                     ImGui.EndCombo();
                                 }
+
                                 ImGui.EndTabItem();
                             }
                             // ==================== STATS TAB ====================
@@ -1791,6 +2202,19 @@ namespace PasaporteFiller
                                 ImGui.Text($"Speed: {_editedCalculatedStats.Speed}");
                                 ImGui.EndTabItem();
                             }
+                            // ==================== TYPES TAB ====================
+                            if (ImGui.BeginTabItem("Types"))
+                            {
+                                ImGui.Spacing();
+
+                                // Pokemon Type & Effectiveness Display
+                                if (_editedBasePokemon != null)
+                                {
+                                    RenderPokemonTypeInfo(_editedBasePokemon);
+                                }
+
+                                ImGui.EndTabItem();
+                            }
                             // ==================== MOVESET TAB ====================
                             if (ImGui.BeginTabItem("Moveset"))
                             {
@@ -1837,49 +2261,122 @@ namespace PasaporteFiller
                                             // Tooltip with move info
                                             if (ImGui.IsItemHovered())
                                             {
-                                                var moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
+                                                // Use cached move data first (instant, no lag)
+                                                PokemonMove? moveData = _editedBasePokemon.Moves?.FirstOrDefault(m => m.Name == moveName);
+
+                                                // If basic data exists but incomplete, try to enhance from API cache (non-blocking)
+                                                if (moveData != null && string.IsNullOrEmpty(moveData.TypeName))
+                                                {
+                                                    try
+                                                    {
+                                                        // Non-blocking: check if already in move cache
+                                                        var cachedMove = PokemonService.GetMoveDetails(moveName).GetAwaiter().GetResult();
+                                                        if (cachedMove != null)
+                                                        {
+                                                            moveData = cachedMove;
+                                                        }
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        // Silently continue with basic data
+                                                        Console.WriteLine($"Failed to enhance move '{moveName}': {ex.Message}");
+                                                    }
+                                                }
+
                                                 if (moveData != null)
                                                 {
                                                     ImGui.BeginTooltip();
-                                                    // Header: Type icon + move name
+                                                    ImGui.PushTextWrapPos(320); // Set wrap width for entire tooltip
+
+                                                    // ===== PHASE 2: Header with colored type name =====
                                                     if (!string.IsNullOrEmpty(moveData.TypeName))
                                                     {
                                                         RenderMoveTypeIcon(moveData.TypeName, new Vector2(20, 20));
                                                         ImGui.SameLine();
-                                                    }
-                                                    ImGui.TextUnformatted(moveName);
-                                                    // Description
-                                                    if (!string.IsNullOrEmpty(moveData.Description))
-                                                    {
-                                                        ImGui.Spacing();
-                                                        ImGui.PushTextWrapPos(300); // Wrap text at 300px
-                                                        ImGui.TextUnformatted(moveData.Description);
-                                                        ImGui.PopTextWrapPos();
-                                                    }
-                                                    // Separator
-                                                    ImGui.Separator();
-                                                    // Battle stats
-                                                    if (!string.IsNullOrEmpty(moveData.TypeName))
-                                                    {
-                                                        ImGui.TextUnformatted($"Type: {moveData.TypeName} | Class: {FormatDamageClass(moveData.DamageClass)}");
+                                                        ImGui.TextColored(GetTypeColor(moveData.TypeName), moveName);
                                                     }
                                                     else
                                                     {
-                                                        ImGui.TextUnformatted($"Class: {FormatDamageClass(moveData.DamageClass)}");
+                                                        ImGui.TextUnformatted(moveName);
                                                     }
-                                                    // Power and PP on same line
-                                                    string powerText = moveData.Power > 0 ? moveData.Power.ToString() : "—";
-                                                    ImGui.TextUnformatted($"Power: {powerText} | PP: {moveData.PP}");
-                                                    // Accuracy
+
+                                                    ImGui.Spacing();
+
+                                                    // ===== PHASE 1: Damage Class Badge =====
+                                                    RenderDamageClassBadge(moveData.DamageClass);
+
+                                                    // ===== PHASE 2: Description =====
+                                                    if (!string.IsNullOrEmpty(moveData.Description))
+                                                    {
+                                                        ImGui.Spacing();
+                                                        ImGui.Separator();
+                                                        ImGui.Spacing();
+                                                        ImGui.TextWrapped(moveData.Description);
+                                                    }
+
+                                                    ImGui.Spacing();
+                                                    ImGui.Separator();
+                                                    ImGui.Spacing();
+
+                                                    // ===== PHASE 1 & 3: Power with color and STAB =====
+                                                    if (moveData.Power > 0)
+                                                    {
+                                                        var powerColor = GetPowerColor(moveData.Power);
+                                                        var stabPower = CalculateSTABPower(moveData, _editedBasePokemon);
+
+                                                        if (stabPower.HasValue)
+                                                        {
+                                                            ImGui.TextColored(powerColor, $"Power: {moveData.Power}");
+                                                            ImGui.SameLine();
+                                                            ImGui.TextColored(new Vector4(0.3f, 1.0f, 0.3f, 1.0f), $"({stabPower} with STAB)");
+                                                        }
+                                                        else
+                                                        {
+                                                            ImGui.TextColored(powerColor, $"Power: {moveData.Power}");
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        var powerColor = GetPowerColor(0);
+                                                        ImGui.TextColored(powerColor, "Power: -");
+                                                    }
+
+                                                    // ===== PHASE 1: PP and Accuracy with icons =====
+                                                    ImGui.Text($"PP: {moveData.PP}");
+                                                    ImGui.SameLine();
+                                                    ImGui.Text("   "); // Spacing
+                                                    ImGui.SameLine();
                                                     if (moveData.Accuracy > 0)
                                                     {
-                                                        ImGui.TextUnformatted($"Accuracy: {moveData.Accuracy}%");
+                                                        ImGui.Text($"Accuracy: {moveData.Accuracy}%");
                                                     }
-                                                    // Priority (only if non-zero)
+                                                    else
+                                                    {
+                                                        ImGui.Text("Accuracy: -");
+                                                    }
+
+                                                    // ===== Priority (only if non-zero) =====
                                                     if (moveData.Priority != 0)
                                                     {
-                                                        ImGui.TextUnformatted($"Priority: {moveData.Priority}");
+                                                        var priorityColor = moveData.Priority > 0
+                                                            ? new Vector4(0.3f, 1.0f, 0.3f, 1.0f)  // Green for +priority
+                                                            : new Vector4(1.0f, 0.5f, 0.3f, 1.0f); // Orange for -priority
+                                                        ImGui.TextColored(priorityColor, $"Priority: {(moveData.Priority > 0 ? "+" : "")}{moveData.Priority}");
                                                     }
+
+                                                    // ===== PHASE 1: Target info =====
+                                                    ImGui.Text(FormatMoveTarget(moveData.Target));
+
+                                                    // ===== PHASE 3: Type Effectiveness Preview =====
+                                                    if (!string.IsNullOrEmpty(moveData.TypeName) && moveData.Power > 0)
+                                                    {
+                                                        ImGui.Spacing();
+                                                        ImGui.Separator();
+                                                        ImGui.Spacing();
+                                                        RenderEffectivenessPreview(moveData.TypeName, 320);
+                                                    }
+
+                                                    ImGui.PopTextWrapPos();
                                                     ImGui.EndTooltip();
                                                 }
                                             }

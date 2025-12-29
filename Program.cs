@@ -2,7 +2,8 @@
 
 namespace PasaporteFiller
 {
-    public class Program {
+    public class Program
+    {
         [DllImport("kernel32.dll")]
         static extern IntPtr GetConsoleWindow();
 
@@ -16,7 +17,7 @@ namespace PasaporteFiller
             var handle = GetConsoleWindow();
             RenderPasaporte renderPasaporte = new();
             renderPasaporte.Start().Wait();
-            ShowWindow(handle, SW_HIDE);
+            ShowWindow(handle, SW_SHOW);
         }
     }
 }
